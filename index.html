@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C0B0A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RD Studio">
+<title>RD Studio</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230C0B0A'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Georgia,serif' font-size='27' fill='%23E8E1D8'%3ERD%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Google Identity Services (OAuth) e Google API client.
+     Carregam em async defer e o app continua funcionando se algum deles falhar. -->
+<script id="gsiScript" src="https://accounts.google.com/gsi/client" async defer></script>
+<script id="gapiScript" src="https://apis.google.com/js/api.js" async defer></script>
+
+<style>
+  /* ---------- reset: o app não depende de nenhum CSS externo ---------- */
+  *,*::before,*::after{box-sizing:border-box}
+  html,body,h1,h2,h3,h4,p,figure,figcaption,dl,dd,ul,ol,li,pre{margin:0;padding:0}
+  ul,ol{list-style:none}
+  h1,h2,h3,h4{font-weight:inherit;font-size:inherit}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+  input,select,textarea{font:inherit;color:inherit}
+  img,canvas,svg{display:block;max-width:100%}
+  a{color:inherit;text-decoration:none}
+  summary{cursor:pointer}
+  [hidden]{display:none!important}
+
+  /* ---------- utilitários usados no markup ---------- */
+  .flex{display:flex}
+  .items-center{align-items:center}
+  .justify-between{justify-content:space-between}
+  .gap-3{gap:12px}
+  .min-w-0{min-width:0}
+  .flex-1{flex:1}
+  .self-start{align-self:flex-start}
+  .mt-5{margin-top:20px}
+  .italic{font-style:italic}
+  .text-muted{color:var(--muted)}
+  .text-\[15px\]{font-size:15px}
+  .whitespace-pre-wrap{white-space:pre-wrap}
+
+  :root{
+    --bg:#0C0B0A; --surface:#171412; --surface-2:#1F1B18; --line:#2B2622; --line-2:#3A342F;
+    --paper:#E8E1D8; --text:#EDE6DC; --muted:#A0978C; --dim:#6F675E;
+    --ok:#9CB89A; --ok-bg:#1C2620; --ok-line:#34453A;
+    --warn:#D2A968; --warn-bg:#2A2218; --warn-line:#4D3E28;
+    --bad:#DE8A77; --bad-bg:#2A1714; --bad-line:#553027;
+    --nav-h:74px;
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --sans:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono','Roboto Mono',Menlo,Consolas,monospace;
+  }
+  html,body{background:var(--bg);color:var(--text)}
+  body{font-family:var(--sans);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;min-height:100dvh}
+  ::selection{background:var(--paper);color:var(--bg)}
+  :focus-visible{outline:2px solid var(--paper);outline-offset:3px;border-radius:10px}
+
+  /* ---------- estrutura ---------- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(12,11,10,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+  .topbar-inner{max-width:600px;margin:0 auto;display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px}
+  .brand{flex:1 1 auto;min-width:0;text-align:left;display:flex;flex-direction:column;gap:2px}
+  .topbar-actions{flex:none}
+  .brand-name{font-family:var(--serif);font-size:27px;line-height:1;letter-spacing:-.01em}
+  .brand-sub{font-size:11.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+  .app{max-width:600px;margin:0 auto;padding:30px 20px calc(var(--nav-h) + env(safe-area-inset-bottom) + 36px)}
+
+  .view[hidden]{display:none}
+  .view.is-entering{animation:viewIn .24s ease-out}
+  @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-size:12.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+  .display{font-family:var(--serif);font-weight:400;font-size:clamp(40px,11.5vw,54px);line-height:1.04;letter-spacing:-.015em;margin-top:10px}
+  .lede{margin-top:14px;font-size:17px;line-height:1.62;color:var(--muted);max-width:40ch}
+  .h2{font-family:var(--serif);font-size:30px;line-height:1.1;font-weight:400}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:40px 0 16px}
+  .hint{font-size:14.5px;color:var(--muted);text-align:right}
+  .stack>*+*{margin-top:12px}
+  .demo-note{margin-top:28px;font-size:13.5px;color:var(--dim);text-align:center}
+
+  /* ---------- componentes ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:22px}
+  .card-title{font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:400;margin-top:10px}
+  .card-body{margin-top:10px;font-size:17px;line-height:1.55;color:var(--muted)}
+
+  .tags{display:flex;flex-wrap:wrap;gap:8px}
+  .tag{display:inline-flex;align-items:center;min-height:28px;padding:3px 12px;border-radius:999px;border:1px solid var(--line-2);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .tag-solid{background:var(--paper);border-color:var(--paper);color:var(--bg)}
+  .tag-ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+  .tag-warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn)}
+  .tag-bad{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:18px;font-family:var(--sans);font-size:16.5px;font-weight:500;border:1px solid var(--line-2);color:var(--text);background:transparent;transition:background .15s,border-color .15s,opacity .15s}
+  .btn:hover{border-color:#4a433d}
+  .btn:active{background:var(--surface-2)}
+  .btn-subtle{background:var(--surface-2);border-color:transparent;color:var(--muted)}
+  .btn-subtle:hover{border-color:var(--line-2);color:var(--text)}
+  .btn-primary{background:var(--paper);border-color:var(--paper);color:var(--bg)}
+  .btn-primary:hover{background:#f1ebe3;border-color:#f1ebe3}
+  .btn-primary:active{background:#d8d0c6}
+  .btn-sm{min-height:42px;padding:0 18px;border-radius:14px;font-size:15.5px}
+  .btn-block{width:100%}
+  .btn:disabled{opacity:.55;cursor:progress}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px}
+  #headerGenerate.is-active{background:var(--paper);border-color:var(--paper);color:var(--bg)}
+
+  .chip-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:2px 20px}
+  .chip-row::-webkit-scrollbar{display:none}
+  .chip{flex:none;min-height:42px;padding:0 18px;border-radius:999px;border:1px solid var(--line-2);font-size:13.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .chip[aria-checked="true"],.chip[aria-pressed="true"]{background:var(--paper);border-color:var(--paper);color:var(--bg)}
+
+  .field{margin-top:22px}
+  .field-label{display:block;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .input{width:100%;min-height:54px;padding:14px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-family:var(--sans);font-size:16.5px}
+  .input:focus{outline:none;border-color:var(--paper)}
+  .input::placeholder{color:var(--dim)}
+  select.input:not([multiple]){appearance:none;-webkit-appearance:none;padding-right:44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0978C' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;background-size:18px}
+  .help{margin-top:8px;font-size:14px;line-height:1.5;color:var(--muted)}
+
+  /* ---------- navegação inferior ---------- */
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(12,11,10,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .bottom-nav ul{display:flex;justify-content:space-around;align-items:stretch;width:100%;max-width:600px;margin:0 auto;height:var(--nav-h)}
+  .bottom-nav li{flex:1 1 0;min-width:0;display:flex}
+  .tab{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;transition:color .15s}
+  .tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab svg{flex:none;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .tab[aria-current="page"]{color:var(--text)}
+
+  /* ---------- HOJE ---------- */
+  .notice{padding:18px 20px}
+  .notice-row{display:flex;gap:14px;align-items:flex-start}
+  .check{flex:none;width:30px;height:30px;margin-top:0;border-radius:50%;border:1px solid var(--line-2);display:grid;place-items:center;color:transparent;transition:background .15s,border-color .15s}
+  .check svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .check[aria-checked="true"]{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+  .notice-title{margin-top:10px;font-size:19px;line-height:1.35;font-weight:500}
+  .notice-body{margin-top:6px;font-size:15.5px;line-height:1.55;color:var(--muted)}
+  .notice.is-done .notice-title{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--dim)}
+
+  /* ---------- CAPÍTULOS ---------- */
+  .day-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+  .day{text-align:left;min-height:138px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px 16px 14px;transition:border-color .15s,background .15s}
+  .day:hover{border-color:var(--line-2)}
+  .day:active{background:var(--surface-2)}
+  .day.is-open{border-color:#8f877d}
+  .day-top{display:flex;justify-content:space-between;align-items:baseline}
+  .day-num{font-family:var(--serif);font-size:36px;line-height:1}
+  .day-wd{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .day-focus{margin-top:14px;font-size:16.5px;color:var(--muted)}
+  .day .tags{margin-top:auto;padding-top:12px}
+
+  /* ---------- ELENCO ---------- */
+  .person{padding:20px}
+  .person-head{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center}
+  .mono{width:56px;height:56px;border-radius:16px;background:var(--surface-2);display:grid;place-items:center;font-family:var(--serif);font-size:28px}
+  .person-name{font-size:20px;font-weight:500;line-height:1.2}
+  .person-role{font-size:15px;color:var(--muted);margin-top:2px}
+  .person-note{margin-top:16px;font-size:16px;line-height:1.55;color:#CFC7BC}
+  .person-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+  .pack-count{font-size:14.5px;color:var(--muted);white-space:nowrap}
+  .pack{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}
+  .pack span{height:5px;border-radius:5px;background:var(--line-2)}
+  .pack span.on{background:var(--paper)}
+  .empty-state{padding:28px 8px;text-align:center;color:var(--muted);font-size:15.5px}
+
+  /* ---------- IDEIAS ---------- */
+  .kanban{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:22px -20px 0;padding:0 20px 10px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .kcol{flex:0 0 86%;scroll-snap-align:start;scroll-margin-left:20px;display:flex;flex-direction:column;gap:12px}
+  @media (min-width:560px){.kcol{flex-basis:300px}}
+  .kcol-head{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 4px}
+  .kcol-head h3{font-size:12.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:400}
+  .kcol-head span{font-size:13px;letter-spacing:.1em;color:var(--muted)}
+  .kcard{padding:18px}
+  .kcard-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .kcard-date{font-size:14px;color:var(--muted);white-space:nowrap}
+  .kcard-names{margin-top:14px;font-size:18px;font-weight:500;line-height:1.3}
+  .kcard-body{margin-top:6px;font-size:16px;line-height:1.55;color:var(--muted)}
+  .kcard-no{margin-top:10px;font-size:15px;line-height:1.5;color:var(--warn)}
+  .kcard select{margin-top:16px;min-height:48px;border-radius:14px;font-size:15.5px}
+  .kempty{border:1px dashed var(--line-2);border-radius:22px;padding:22px;text-align:center;font-size:15px;color:var(--muted)}
+
+  /* ---------- ESTÚDIO ---------- */
+  .char-select{padding:6px;font-size:17px;overflow:hidden}
+  .char-select option{padding:11px 14px;border-radius:12px;cursor:pointer}
+  .char-select option:checked{background:linear-gradient(var(--surface-2),var(--surface-2));color:var(--text);box-shadow:inset 3px 0 0 var(--paper)}
+  .selected-chips{display:flex;flex-wrap:wrap;gap:8px;min-height:32px;margin-top:12px}
+  .sel-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 7px 5px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);font-size:15px}
+  .sel-chip span[aria-hidden]{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface-2);font-size:12px}
+  .sel-empty{align-self:center;font-size:14.5px;color:var(--dim)}
+  .prompt-box{min-height:300px;resize:vertical;font-family:var(--mono);font-size:15px;line-height:1.65;padding:18px}
+  .guard{transition:color .2s}
+  .guard.is-alert{color:var(--warn)}
+  .prompt-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;margin-top:6px;font-size:13.5px;color:var(--dim)}
+  details.params{margin-top:22px;border:1px solid var(--line);border-radius:22px;padding:0 18px}
+  details.params summary{list-style:none;cursor:pointer;min-height:56px;display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:500}
+  details.params summary::-webkit-details-marker{display:none}
+  details.params summary::after{content:"";width:18px;height:18px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0978C' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat;transition:transform .2s}
+  details.params[open] summary::after{transform:rotate(180deg)}
+  details.params .params-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;padding-bottom:20px}
+  details.params .params-grid .field{margin-top:12px}
+  .actions{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;margin-top:26px}
+  .actions .btn{padding:0 10px}
+  .out{margin-top:26px}
+  .out-grid{display:grid;gap:10px}
+  .out-grid.two{grid-template-columns:1fr 1fr}
+  .out canvas{width:100%;height:auto;display:block;border-radius:18px;background:var(--surface)}
+  .out-caption{margin-top:12px;font-size:15.5px;line-height:1.5}
+  .out-caption small{display:block;margin-top:2px;font-size:13.5px;color:var(--muted)}
+  .skeleton{border-radius:18px;border:1px solid var(--line);background:linear-gradient(100deg,var(--surface) 30%,var(--surface-2) 50%,var(--surface) 70%);background-size:300% 100%;animation:shimmer 1.3s linear infinite;display:grid;place-items:center;color:var(--muted);font-size:15px}
+  @keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+  .saved li{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+  .saved li:last-child{border-bottom:1px solid var(--line)}
+  .saved .who{font-size:16px;font-weight:500}
+  .saved .what{font-size:14.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .saved .when{font-size:13px;color:var(--dim)}
+  .saved .acts{display:flex;gap:16px;font-size:15px}
+  .saved .acts .del{color:var(--dim)}
+
+  /* ---------- camadas ---------- */
+  .layer[hidden]{display:none!important}
+  .reader{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;animation:up .24s ease-out}
+  .reader-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 12px 10px 20px;border-bottom:1px solid var(--line)}
+  .reader-bar p{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .icon-btn{flex:none;width:46px;height:46px;border-radius:50%;border:1px solid var(--line-2);display:grid;place-items:center;color:var(--text)}
+  .icon-btn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round}
+  .progress{height:2px;background:var(--line)}
+  .progress span{display:block;height:100%;width:0;background:var(--paper)}
+  .reader-body{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .reader-body article{max-width:36rem;margin:0 auto;padding:34px 24px calc(env(safe-area-inset-bottom) + 48px)}
+  .rd-title{font-family:var(--serif);font-weight:400;font-size:clamp(42px,12vw,56px);line-height:1;margin-top:10px}
+  .rd-lead{margin-top:16px;font-size:18px;line-height:1.55;color:#CFC7BC}
+  .rd-meta{margin-top:10px;font-size:14px;color:var(--dim)}
+  .rd-rule{height:1px;background:var(--line);margin:26px 0 30px}
+  .prose p{font-family:var(--serif);font-size:20px;line-height:1.75;margin:0;text-indent:1.5em;hyphens:auto;-webkit-hyphens:auto}
+  .prose p.first,.prose .break+p{text-indent:0}
+  .prose .break{text-align:center;color:var(--dim);letter-spacing:.6em;margin:26px 0;font-size:18px;text-indent:0}
+  .rd-empty{border:1px dashed var(--line-2);border-radius:22px;padding:26px;text-align:center;color:var(--muted);font-size:16px;line-height:1.55}
+  .rd-nav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:44px}
+
+  .sheet{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.62);display:flex;align-items:flex-end;justify-content:center}
+  .sheet-panel{width:100%;max-width:600px;max-height:88dvh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;padding:12px 20px calc(env(safe-area-inset-bottom) + 24px);animation:up .24s ease-out}
+  .grabber{width:42px;height:4px;border-radius:4px;background:var(--line-2);margin:0 auto 16px}
+  .pv-block{border-left:2px solid var(--line-2);padding:2px 0 2px 14px;margin:14px 0}
+  .pv-block.manual{border-left-color:var(--paper)}
+  .pv-block h4{font-size:15px;font-weight:600}
+  .pv-block p{margin-top:2px;font-size:15px;line-height:1.55;color:var(--muted);white-space:pre-wrap;word-break:break-word}
+  .pv-break{font-family:var(--mono);font-size:13px;color:var(--dim);padding-left:16px}
+  .pv-raw{margin-top:10px;padding:16px;border-radius:16px;background:var(--bg);border:1px solid var(--line);font-family:var(--mono);font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#CFC7BC}
+  @keyframes up{from{transform:translateY(22px);opacity:0}to{transform:none;opacity:1}}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);z-index:80;transform:translate(-50%,12px);opacity:0;pointer-events:none;max-width:calc(100% - 40px);padding:12px 20px;border-radius:16px;background:var(--paper);color:var(--bg);font-size:15.5px;font-weight:500;transition:opacity .2s,transform .2s}
+  .toast.is-on{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- conexões e geração ---------- */
+  .topbar-actions{display:flex;align-items:center;gap:8px}
+  .icon-btn.sm{width:42px;height:42px}
+  .btn.btn-connected,.btn.btn-connected:hover{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+  .conn-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .conn-name{font-size:16.5px;font-weight:500}
+  .conn-state{margin-top:2px;font-size:14px;line-height:1.45;color:var(--muted)}
+  .link-btn{font-size:14.5px;color:var(--muted);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+  .gen-status{display:flex;align-items:center;gap:14px;padding:20px;text-align:left}
+  .gen-status p{font-size:16px;color:var(--text)}
+  .gen-status small{display:block;font-size:13.5px;color:var(--muted)}
+  .spinner{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--paper);animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .out img{width:100%;height:auto;display:block;border-radius:18px;background:var(--surface)}
+  .out-error{border-color:var(--bad-line)}
+  .out-error .notice-title{margin-top:0;color:var(--bad)}
+
+  .tracker-text{margin-top:18px;padding:16px;border-radius:16px;background:var(--bg);border:1px solid var(--line);font-family:var(--mono);font-size:13.5px;line-height:1.65;color:#CFC7BC;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow-y:auto;overscroll-behavior:contain}
+
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <button class="brand" type="button" data-go="hoje" aria-label="RD Studio, ir para Hoje">
+      <span class="brand-name">RD Studio</span>
+      <span class="brand-sub">Restored Desire</span>
+    </button>
+    <div class="topbar-actions">
+      <button class="icon-btn sm" type="button" data-settings aria-label="Configurações">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="btn btn-sm" id="headerGenerate" type="button" data-go="estudio">Gerar</button>
+    </div>
+  </div>
+</header>
+
+<main class="app">
+
+  <!-- ================= HOJE ================= -->
+  <section class="view" data-view="hoje">
+    <p class="eyebrow">Mesa de hoje</p>
+    <h1 class="display" id="todayTitle"></h1>
+    <p class="lede">O cânone continua no Drive. Aqui você vê o que está aberto, o que travou e o que falta gravar.</p>
+    <article class="card" style="margin-top:28px" aria-labelledby="connTitle">
+      <div class="flex items-center justify-between gap-3">
+        <p class="eyebrow" id="connTitle">Conexões</p>
+        <button class="link-btn" type="button" data-settings>Configurações</button>
+      </div>
+      <div class="conn-row" style="margin-top:6px">
+        <div class="min-w-0"><p class="conn-name">Proxy PixAI</p><p class="conn-state" id="gasState"></p></div>
+        <span class="tag" id="gasTag"></span>
+      </div>
+      <div class="conn-row">
+        <div class="min-w-0"><p class="conn-name">Google Drive</p><p class="conn-state" id="driveState" aria-live="polite"></p></div>
+        <span class="tag" id="driveTag"></span>
+      </div>
+      <button class="btn btn-block" style="margin-top:16px" type="button" id="btnDrive">Conectar ao Drive</button>
+    </article>
+    <article class="card" style="margin-top:12px" id="openCard"></article>
+    <div class="section-head">
+      <h2 class="h2">Progress_Tracker</h2>
+      <p class="hint">Direto do Drive</p>
+    </div>
+    <article class="card" id="trackerCard" aria-live="polite" aria-busy="false">
+      <p class="conn-state" id="trackerMeta"></p>
+      <p class="notice-body" id="trackerError" style="color:var(--bad)" hidden></p>
+      <button class="btn btn-block" style="margin-top:16px" type="button" id="btnTracker">Sincronizar Tracker</button>
+      <div class="tracker-text whitespace-pre-wrap" id="trackerText" hidden></div>
+    </article>
+  </section>
+
+  <!-- ================= CAPÍTULOS ================= -->
+  <section class="view" data-view="capitulos" hidden>
+    <p class="eyebrow">Calendário</p>
+    <h1 class="display">Um capítulo, um dia</h1>
+    <p class="lede">Toque no dia para ler o capítulo. Se o texto for longo, a leitura rola.</p>
+    <p class="mt-5 text-[15px] text-muted" id="daySummary"></p>
+    <div class="day-grid" id="dayGrid"></div>
+    <p class="demo-note">Dados de exemplo. Substitua pelo Progress_Tracker.</p>
+  </section>
+
+  <!-- ================= ELENCO ================= -->
+  <section class="view" data-view="elenco" hidden>
+    <p class="eyebrow">Elenco</p>
+    <h1 class="display" id="castTitle"></h1>
+    <p class="lede">O Drive é dono da sheet. Aqui você vê pack, lock visual e o que cada uma já sabe.</p>
+    <input class="input" style="margin-top:28px" id="castSearch" type="search" placeholder="Buscar nome, papel ou grupo" aria-label="Buscar no elenco">
+    <div class="chip-row" style="margin-top:14px" role="radiogroup" aria-label="Filtrar por grupo" id="castFilters"></div>
+    <div class="stack" style="margin-top:20px" id="castList"></div>
+  </section>
+
+  <!-- ================= IDEIAS ================= -->
+  <section class="view" data-view="ideias" hidden>
+    <p class="eyebrow">00_Ideias</p>
+    <h1 class="display">Futuro até entrar na história</h1>
+    <p class="lede">Data não promove sozinha. O Draft lê este quadro, e é aqui que você move cada ideia.</p>
+    <button class="btn btn-primary btn-block" style="margin-top:26px" type="button" id="btnNewIdea">Nova ideia</button>
+    <div class="kanban" id="kanban"></div>
+  </section>
+
+  <!-- ================= ESTÚDIO ================= -->
+  <section class="view" data-view="estudio" hidden>
+    <p class="eyebrow">Estúdio PixAI</p>
+    <h1 class="display">Gerar imagem</h1>
+    <p class="lede">O Studio não grava no Drive. Baixe assim que sair, porque o PixAI apaga o arquivo.</p>
+
+    <div class="field" style="margin-top:30px">
+      <label class="field-label" for="charSelect">Personagens (cola a lock visual)</label>
+      <select id="charSelect" class="input char-select" multiple size="3" aria-describedby="selHelp">
+        <option value="elena">Elena Silva</option>
+        <option value="mia">Mia</option>
+        <option value="clara">Clara</option>
+      </select>
+      <p class="help" id="selHelp">Toque para marcar ou desmarcar. Dá para escolher mais de uma.</p>
+      <div class="selected-chips" id="selChips" aria-live="polite"></div>
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="lookLabel">Look</span>
+      <div class="chip-row" role="radiogroup" aria-labelledby="lookLabel" id="lookChips"></div>
+      <button class="btn btn-subtle btn-sm" type="button" id="btnInsert" style="margin-top:12px">Inserir no prompt</button>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="prompt">PROMPT</label>
+      <textarea id="prompt" class="input prompt-box" spellcheck="false" placeholder="Prompt em inglês, como no 04_Prompts." aria-describedby="guardHint"></textarea>
+      <p class="help" id="guardHint">Use "Inserir no prompt" para colar a base do personagem com o look. O que estiver aqui é exatamente o que vai para o PixAI.</p>
+      <div class="prompt-meta" id="promptMeta"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="negative">Negative (opcional)</label>
+      <input class="input" id="negative" type="text" placeholder="lowres, bad hands, extra fingers" autocomplete="off">
+    </div>
+
+    <details class="params">
+      <summary>Parâmetros do PixAI</summary>
+      <div class="params-grid">
+        <div class="field" style="grid-column:1/-1"><label class="field-label" for="pModel">Modelo</label>
+          <select class="input" id="pModel"></select></div>
+        <div class="field"><label class="field-label" for="pMode">Modo</label>
+          <select class="input" id="pMode"></select></div>
+        <div class="field"><label class="field-label" for="pRatio">Proporção</label>
+          <select class="input" id="pRatio"><option>1:1</option><option selected>2:3</option><option>3:4</option><option>3:2</option><option>4:3</option><option>9:16</option><option>16:9</option></select></div>
+        <div class="field"><label class="field-label" for="pBatch">Lote</label>
+          <select class="input" id="pBatch"><option value="1">1 imagem</option><option value="4">4 imagens</option></select></div>
+        <div class="field"><label class="field-label" for="pSeed">Seed (opcional)</label>
+          <input class="input" id="pSeed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Aleatória" autocomplete="off"></div>
+        <p class="help" style="grid-column:1/-1">Tudo isso vai para o proxy junto com a senha. O token do PixAI fica só no Apps Script.</p>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="btn" id="btnPreview" type="button">Pré-visualizar</button>
+      <button class="btn btn-primary" id="btnGenerate" type="button">Gerar</button>
+      <button class="btn" id="btnSave" type="button">Salvar</button>
+    </div>
+
+    <div class="out" id="output" aria-live="polite"></div>
+
+    <div class="section-head"><h2 class="h2">Prompts salvos</h2></div>
+    <ul class="saved" id="savedList"></ul>
+  </section>
+</main>
+
+<!-- ================= NAVEGAÇÃO ================= -->
+<nav class="bottom-nav" aria-label="Seções">
+  <ul>
+    <li><button class="tab" type="button" data-go="hoje">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5L12 3.5l8.5 7V20a1 1 0 0 1-1 1h-4.5v-6h-6v6H4.5a1 1 0 0 1-1-1z"/></svg><span>Hoje</span></button></li>
+    <li><button class="tab" type="button" data-go="capitulos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg><span>Capítulos</span></button></li>
+    <li><button class="tab" type="button" data-go="elenco">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/></svg><span>Elenco</span></button></li>
+    <li><button class="tab" type="button" data-go="ideias">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21.5h4"/><path d="M12 2.5a6.5 6.5 0 0 0-3.8 11.8c.5.4.8 1 .8 1.7v.5h6V16c0-.7.3-1.3.8-1.7A6.5 6.5 0 0 0 12 2.5z"/></svg><span>Ideias</span></button></li>
+    <li><button class="tab" type="button" data-go="estudio">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5.5-5.5L5 20"/></svg><span>Estúdio</span></button></li>
+  </ul>
+</nav>
+
+<!-- ================= LEITOR ================= -->
+<div class="layer reader" id="reader" role="dialog" aria-modal="true" aria-labelledby="rdTitle" hidden>
+  <div class="reader-bar">
+    <p id="rdBar"></p>
+    <button class="icon-btn" type="button" data-close aria-label="Fechar leitura">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="progress" aria-hidden="true"><span id="rdProgress"></span></div>
+  <div class="reader-body" id="rdBody">
+    <article>
+      <p class="eyebrow" id="rdKicker"></p>
+      <h2 class="rd-title" id="rdTitle"></h2>
+      <p class="rd-lead" id="rdLead"></p>
+      <p class="rd-meta" id="rdMeta"></p>
+      <div class="rd-rule"></div>
+      <div class="prose" id="rdText"></div>
+      <div class="rd-nav">
+        <button class="btn" type="button" id="rdPrev">Dia anterior</button>
+        <button class="btn" type="button" id="rdNext">Próximo dia</button>
+      </div>
+    </article>
+  </div>
+</div>
+
+<!-- ================= PRÉ-VISUALIZAÇÃO ================= -->
+<div class="layer sheet" id="previewSheet" role="dialog" aria-modal="true" aria-labelledby="pvTitle" hidden>
+  <div class="sheet-panel">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="h2" id="pvTitle">Prompt final</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar pré-visualização">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div id="pvContent"></div>
+  </div>
+</div>
+
+<!-- ================= NOVA IDEIA ================= -->
+<div class="layer sheet" id="ideaSheet" role="dialog" aria-modal="true" aria-labelledby="ideaTitle" hidden>
+  <div class="sheet-panel">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="h2" id="ideaTitle">Nova ideia</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="field"><label class="field-label" for="ideaNames">Personagens</label>
+      <input class="input" id="ideaNames" type="text" placeholder="Rod, Lydia"></div>
+    <div class="field"><label class="field-label" for="ideaBody">Ideia</label>
+      <textarea class="input" id="ideaBody" rows="4" placeholder="O que acontece?"></textarea></div>
+    <div class="field"><label class="field-label" for="ideaDay">Dia (opcional)</label>
+      <input class="input" id="ideaDay" type="number" min="1" inputmode="numeric" placeholder="Sem data"></div>
+    <button class="btn btn-primary btn-block" style="margin-top:24px" type="button" id="ideaAdd">Adicionar em Soltas</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   Utilitários
+   ========================================================= */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => n.toLocaleString('pt-BR');
+const listPt = arr => arr.length > 1 ? arr.slice(0, -1).join(', ') + ' e ' + arr.at(-1) : (arr[0] || '');
+
+const store = {
+  mem: {},
+  get(k, fallback) {
+    try { const v = localStorage.getItem(k); if (v != null) return JSON.parse(v); } catch (_) {}
+    return k in this.mem ? this.mem[k] : fallback;
+  },
+  set(k, v) {
+    this.mem[k] = v;
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {}
+  }
+};
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('is-on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('is-on'), 2600);
+}
+
+/* =========================================================
+   Navegação
+   ========================================================= */
+const TITLES = { hoje:'Hoje', capitulos:'Capítulos', elenco:'Elenco', ideias:'Ideias', estudio:'Estúdio' };
+
+function showView(id) {
+  if (!TITLES[id]) id = 'hoje';
+  $$('.view').forEach(v => {
+    const on = v.dataset.view === id;
+    v.hidden = !on;
+    if (on) { v.classList.remove('is-entering'); void v.offsetWidth; v.classList.add('is-entering'); }
+  });
+  $$('.tab').forEach(t => t.dataset.go === id ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'));
+  $('#headerGenerate').classList.toggle('is-active', id === 'estudio');
+  document.title = `${TITLES[id]} | RD Studio`;
+  try { history.replaceState(null, '', '#' + id); } catch (_) {}
+  window.scrollTo({ top: 0 });
+}
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]');
+  if (go) showView(go.dataset.go);
+});
+window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+
+/* =========================================================
+   Camadas
+   ========================================================= */
+let lastFocus = null;
+function openLayer(el) {
+  if (!el.hidden) return;
+  lastFocus = document.activeElement;
+  el.hidden = false;
+  document.body.style.overflow = 'hidden';
+  el.querySelector('[data-close]')?.focus();
+}
+function closeLayer(el) {
+  el.hidden = true;
+  if (!$$('.layer').some(l => !l.hidden)) document.body.style.overflow = '';
+  lastFocus?.focus?.();
+}
+$$('[data-close]').forEach(b => b.addEventListener('click', () => closeLayer(b.closest('.layer'))));
+$$('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s) closeLayer(s); }));
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = $$('.layer').filter(l => !l.hidden).pop();
+  if (open) closeLayer(open);
+});
+
+/* =========================================================
+   Dados do calendário (exemplo)
+   ========================================================= */
+const WEEK = ['Sábado','Domingo','Segunda','Terça','Quarta','Quinta','Sexta'];
+const weekday = n => WEEK[(n - 1) % 7];
+const wdShort = n => weekday(n).slice(0, 3);
+const CURRENT_DAY = 15;
+
+const DAYS = [
+  { n:1,  focus:'Casa',       status:'feito', synopsis:'Rod chega. Elena abre a porta e a casa se apresenta.' },
+  { n:2,  focus:'Casa',       status:'feito', synopsis:'Domingo em casa. Mercado com Elena.' },
+  { n:3,  focus:'Selene',     status:'feito', synopsis:'Primeira segunda-feira. Selene na aula de artes.' },
+  { n:4,  focus:'Kori',       status:'feito', synopsis:'Rotina de campus. Kori entra na história.' },
+  { n:5,  focus:'Roxanne',    status:'feito', synopsis:'Meio da semana. Roxanne muda o ritmo do dia.' },
+  { n:6,  focus:'Isabella',   status:'feito', synopsis:'Isabella aparece e deixa uma pergunta no ar.' },
+  { n:7,  focus:'Seraphina',  status:'feito', synopsis:'Sexta longa. Seraphina fecha a primeira semana.' },
+  { n:8,  focus:'Casa',       status:'feito', synopsis:'Sábado em casa. A família se reorganiza.' },
+  { n:9,  focus:'Casa',       status:'feito', synopsis:'Domingo lento. Planos para a semana.' },
+  { n:10, focus:'Selene',     status:'feito', synopsis:'Segunda de novo com Selene no prédio de artes.' },
+  { n:11, focus:'Kori',       status:'feito', synopsis:'Kori pede ajuda com um trabalho.' },
+  { n:12, focus:'Roxanne',    status:'feito', synopsis:'Roxanne cobra uma promessa antiga.' },
+  { n:13, focus:'Isabella',   status:'feito', synopsis:'Isabella volta ao assunto da semana passada.' },
+  { n:14, focus:'Seraphina',  status:'feito', synopsis:'Seraphina e o fim da segunda semana.' },
+  { n:15, focus:'Scarlett',   status:'aberto', synopsis:'Scarlett visita. Convite para Rod, Lydia e Alexis.' },
+  { n:16, focus:'Nora e Sienna', status:'fila', synopsis:'Nora e Sienna. Beat exato a definir.' },
+  { n:17, focus:'Casa',       status:'fila', synopsis:'Segunda em casa. Ainda sem ideia fechada.' }
+];
+const DAY_STATUS = {
+  feito:  { label:'Feito',   cls:'tag-ok' },
+  aberto: { label:'Próximo', cls:'tag-solid' },
+  fila:   { label:'Na fila', cls:'' }
+};
+
+/* =========================================================
+   1. HOJE
+   ========================================================= */
+
+function renderToday() {
+  const d = DAYS.find(x => x.n === CURRENT_DAY);
+  $('#todayTitle').textContent = `Dia ${d.n} · ${weekday(d.n)}`;
+  $('#openCard').innerHTML = `
+    <p class="eyebrow">Capítulo aberto</p>
+    <h2 class="card-title">Capítulo ${d.n} – ${weekday(d.n)}</h2>
+    <p class="card-body">${esc(d.synopsis)}</p>
+    <div class="tags" style="margin-top:18px">
+      <span class="tag tag-solid">Próximo</span>
+      <span class="tag">Draft lock ausente</span>
+      <span class="tag">Write bloqueado</span>
+    </div>
+    <div class="btn-row" style="margin-top:22px">
+      <button class="btn btn-primary" type="button" data-read="${d.n}">Abrir capítulo</button>
+      <button class="btn" type="button" data-go="capitulos">Ver dias ${d.n}–${d.n + 2}</button>
+    </div>`;
+}
+
+/* =========================================================
+   2. CAPÍTULOS + leitor
+   ========================================================= */
+const PARAGRAPHS = [
+  'A manhã começou devagar. A casa ainda cheirava a café requentado e a madeira encerada, e o relógio da cozinha adiantava os mesmos quatro minutos de sempre.',
+  'Rod desceu a escada contando os degraus, um hábito que não sabia de onde vinha. No corredor, as fotos antigas continuavam tortas, como se ninguém tivesse coragem de endireitá-las.',
+  'Elena já estava à mesa, com a lista de compras dobrada em quatro e uma caneta sem tampa. Tinha o jeito de quem organiza a semana inteira antes das oito.',
+  '— Hoje a gente passa no mercado antes do almoço — disse ela, sem levantar os olhos. — E você carrega as sacolas.',
+  'Lá fora, a rua acordava aos poucos: um portão rangendo, um cachorro insistente, o ônibus das oito e dez que nunca passava às oito e dez.',
+  'O campus tinha aquele barulho de começo de semestre, feito de conversas cruzadas e passos apressados. Ninguém parecia saber exatamente onde ficava a sala certa.',
+  'No prédio de artes, as paredes eram cobertas de cartazes sobrepostos, alguns tão antigos que as datas já não diziam nada a ninguém.',
+  'O resto da tarde passou em pedaços: uma fila longa, uma conversa interrompida, um recado deixado na geladeira com a letra apertada de sempre.',
+  'À noite, a casa ficou em silêncio de um jeito diferente. Não era cansaço. Era a sensação de que alguma coisa tinha mudado de lugar e ninguém tinha avisado.',
+  'Rod apagou a luz do quarto e ficou ouvindo o som distante da cidade, pensando que amanhã seria outro dia e que, por enquanto, isso bastava.'
+];
+const dayWords = n => 2400 + (n * 137) % 1800;
+
+function chapterText(n) {
+  const out = [];
+  for (let i = 0; i < 18; i++) {
+    if (i > 0 && i % 6 === 0) out.push('<p class="break" aria-hidden="true">* * *</p>');
+    out.push(`<p class="${i === 0 ? 'first' : ''}">${esc(PARAGRAPHS[(i + n * 3) % PARAGRAPHS.length])}</p>`);
+  }
+  return out.join('');
+}
+
+function renderDays() {
+  const c = s => DAYS.filter(d => d.status === s).length;
+  $('#daySummary').textContent = `${c('feito')} feitos, ${c('aberto')} aberto e ${c('fila')} na fila.`;
+  $('#dayGrid').innerHTML = DAYS.map(d => `
+    <button class="day ${d.status === 'aberto' ? 'is-open' : ''}" type="button" data-read="${d.n}" aria-label="Dia ${d.n}, ${weekday(d.n)}: ${esc(d.focus)}. ${DAY_STATUS[d.status].label}">
+      <span class="day-top"><span class="day-num">${d.n}</span><span class="day-wd">${wdShort(d.n)}</span></span>
+      <span class="day-focus">${esc(d.focus)}</span>
+      <span class="tags"><span class="tag ${DAY_STATUS[d.status].cls}">${DAY_STATUS[d.status].label}</span></span>
+    </button>`).join('');
+}
+
+let readingDay = null;
+function openReader(n) {
+  const d = DAYS.find(x => x.n === n);
+  if (!d) return;
+  readingDay = n;
+  const hasText = d.status === 'feito';
+  const words = dayWords(n);
+  $('#rdBar').textContent = `Dia ${n} de ${DAYS.length}`;
+  $('#rdKicker').textContent = `Capítulo ${n}`;
+  $('#rdTitle').textContent = weekday(n);
+  $('#rdLead').textContent = d.synopsis;
+  $('#rdMeta').textContent = hasText
+    ? `${fmt(words)} palavras, ${Math.round(words / 230)} min de leitura. Texto simulado.`
+    : DAY_STATUS[d.status].label;
+  $('#rdText').innerHTML = hasText ? chapterText(n) : `
+    <div class="rd-empty">${d.status === 'aberto'
+      ? 'O rascunho deste dia ainda não existe. O Write só começa depois do LOCK no Drive.'
+      : 'Este dia está na fila. Nada foi escrito ainda.'}</div>`;
+  $('#rdPrev').disabled = n <= 1;
+  $('#rdNext').disabled = n >= DAYS.length;
+  $('#rdBody').scrollTop = 0;
+  $('#rdProgress').style.width = '0%';
+  openLayer($('#reader'));
+}
+
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-read]');
+  if (r) openReader(+r.dataset.read);
+});
+$('#rdPrev').addEventListener('click', () => openReader(readingDay - 1));
+$('#rdNext').addEventListener('click', () => openReader(readingDay + 1));
+$('#rdBody').addEventListener('scroll', e => {
+  const el = e.currentTarget, max = el.scrollHeight - el.clientHeight;
+  $('#rdProgress').style.width = (max > 0 ? el.scrollTop / max * 100 : 100) + '%';
+}, { passive: true });
+
+/* =========================================================
+   3. ELENCO
+   ========================================================= */
+const CAST = [
+  { name:'Rod Silva',    role:'Protagonista',     group:'Casa',     pack:0, note:'Pack ainda vazio. Não inventar cara.', tags:[] },
+  { name:'Elena Silva',  role:'Tia, matriarca',   group:'Casa',     pack:5, note:'Cabelo preto longo com ondas, olhos violeta, sem óculos.', tags:[['Sabe','ok'], ['Refs velhas','bad']] },
+  { name:'Lydia Silva',  role:'Família Silva',    group:'Casa',     pack:5, note:'Indecisa sobre a casa para comprar.', tags:[['Refs velhas','bad']] },
+  { name:'Alexis Silva', role:'Família Silva',    group:'Casa',     pack:3, note:'Resiste à ida do Rod no dia 15.', tags:[['Não sabe','warn']] },
+  { name:'Scarlett',     role:'Visita do dia 15', group:'Trabalho', pack:2, note:'Chega no sábado e faz o convite.', tags:[['Lock pendente','warn']] },
+  { name:'Selene',       role:'Artes',            group:'Campus',   pack:5, note:'Aparece às segundas no prédio de artes.', tags:[['Sabe','ok']] },
+  { name:'Nora',         role:'Dia 16',           group:'Campus',   pack:4, note:'Beat exato ainda a definir.', tags:[] },
+  { name:'Sienna',       role:'Dia 16',           group:'Campus',   pack:4, note:'Não conta no campus neste dia.', tags:[] },
+  { name:'Mia',          role:'Teste do Estúdio', group:'Trabalho', pack:1, note:'Lock visual de exemplo.', tags:[['Lock pendente','warn']] },
+  { name:'Clara',        role:'Teste do Estúdio', group:'Trabalho', pack:1, note:'Lock visual de exemplo.', tags:[['Lock pendente','warn']] }
+];
+const GROUPS = ['Todos', 'Casa', 'Campus', 'Trabalho'];
+const castState = { q:'', group:'Todos' };
+
+function renderCastFilters() {
+  $('#castFilters').innerHTML = GROUPS.map(g =>
+    `<button class="chip" type="button" role="radio" aria-checked="${castState.group === g}" data-group="${g}">${g}</button>`).join('');
+}
+
+function renderCast() {
+  $('#castTitle').textContent = `${CAST.length} fichas. Uma por personagem.`;
+  const q = castState.q.trim().toLowerCase();
+  const list = CAST.filter(p =>
+    (castState.group === 'Todos' || p.group === castState.group) &&
+    (!q || [p.name, p.role, p.group].join(' ').toLowerCase().includes(q)));
+
+  $('#castList').innerHTML = list.length ? list.map(p => `
+    <article class="card person">
+      <div class="person-head">
+        <div class="mono" aria-hidden="true">${esc(p.name[0])}</div>
+        <div class="min-w-0">
+          <h3 class="person-name">${esc(p.name)}</h3>
+          <p class="person-role">${esc(p.role)}</p>
+        </div>
+        <span class="tag self-start">${esc(p.group)}</span>
+      </div>
+      <p class="person-note">${esc(p.note)}</p>
+      <div class="person-foot">
+        <div class="tags">${p.tags.length ? p.tags.map(([t, tone]) => `<span class="tag tag-${tone}">${esc(t)}</span>`).join('') : '<span class="tag">—</span>'}</div>
+        <span class="pack-count">${p.pack}/5 pack</span>
+      </div>
+      <div class="pack" role="img" aria-label="Pack visual ${p.pack} de 5">${[0,1,2,3,4].map(i => `<span class="${i < p.pack ? 'on' : ''}"></span>`).join('')}</div>
+    </article>`).join('')
+    : '<p class="empty-state">Ninguém encontrado. Tente outro nome ou limpe o filtro.</p>';
+}
+
+$('#castSearch').addEventListener('input', e => { castState.q = e.target.value; renderCast(); });
+$('#castFilters').addEventListener('click', e => {
+  const b = e.target.closest('[data-group]');
+  if (!b) return;
+  castState.group = b.dataset.group;
+  renderCastFilters();
+  renderCast();
+});
+
+/* =========================================================
+   4. IDEIAS (kanban)
+   ========================================================= */
+const COLUMNS = [
+  { id:'soltas',     title:'Soltas' },
+  { id:'calendario', title:'Calendário' },
+  { id:'lock',       title:'Lock' }
+];
+const IDEAS_SEED = [
+  { id:1, col:'calendario', day:15, names:'Scarlett, Rod, Lydia, Alexis', body:'Scarlett chega. Convida os três. Alexis resiste à ida do Rod. Lydia indecisa (casa para comprar). Rod fica no porão de qualquer jeito.', no:'Não promover sozinho a prosa. O Draft monta o dia.' },
+  { id:2, col:'calendario', day:16, names:'Nora, Sienna, Rod', body:'Nora e Sienna veem. Beat exato a definir. Sienna não conta no campus neste dia.' },
+  { id:3, col:'lock', names:'Lydia', body:'Avisa a família antes de fechar a própria decisão sobre a casa.', no:'Não resolver antes do dia 15.' },
+  { id:4, col:'lock', names:'Rod', body:'Rod continua no porão até o fim da semana.' },
+  { id:5, col:'lock', names:'Elena', body:'Nenhuma cena nova com ela antes das refs regeneradas.' },
+  { id:6, col:'soltas', names:'Scarlett', body:'Um segundo convite, dessa vez só para o Rod.' }
+];
+let ideas = store.get('rd.ideas', IDEAS_SEED);
+
+function renderKanban() {
+  $('#kanban').innerHTML = COLUMNS.map(c => {
+    const items = ideas.filter(i => i.col === c.id);
+    return `
+      <section class="kcol" aria-label="${c.title}">
+        <header class="kcol-head"><h3>${c.title}</h3><span>${items.length}</span></header>
+        ${items.length ? items.map(i => `
+          <article class="card kcard">
+            <div class="kcard-top">
+              <span class="tag ${c.id === 'calendario' ? 'tag-solid' : c.id === 'lock' ? 'tag-ok' : ''}">${c.title}</span>
+              ${i.day ? `<span class="kcard-date">Dia ${i.day} · ${weekday(i.day)}</span>` : ''}
+            </div>
+            <p class="kcard-names">${esc(i.names || 'Sem personagem')}</p>
+            <p class="kcard-body">${esc(i.body)}</p>
+            ${i.no ? `<p class="kcard-no">Não: ${esc(i.no)}</p>` : ''}
+            <select class="input" data-move="${i.id}" aria-label="Mover ideia">
+              <option value="">Mover para…</option>
+              ${COLUMNS.filter(o => o.id !== c.id).map(o => `<option value="${o.id}">${o.title}</option>`).join('')}
+              <option value="__del">Excluir ideia</option>
+            </select>
+          </article>`).join('') : '<p class="kempty">Nada aqui por enquanto.</p>'}
+      </section>`;
+  }).join('');
+}
+
+$('#kanban').addEventListener('change', e => {
+  const sel = e.target.closest('[data-move]');
+  if (!sel || !sel.value) return;
+  const id = +sel.dataset.move;
+  if (sel.value === '__del') {
+    ideas = ideas.filter(i => i.id !== id);
+    toast('Ideia excluída.');
+  } else {
+    const idea = ideas.find(i => i.id === id);
+    idea.col = sel.value;
+    toast(`Ideia movida para ${COLUMNS.find(c => c.id === sel.value).title}.`);
+  }
+  store.set('rd.ideas', ideas);
+  renderKanban();
+});
+
+$('#btnNewIdea').addEventListener('click', () => {
+  $('#ideaNames').value = ''; $('#ideaBody').value = ''; $('#ideaDay').value = '';
+  openLayer($('#ideaSheet'));
+  setTimeout(() => $('#ideaBody').focus(), 60);
+});
+$('#ideaAdd').addEventListener('click', () => {
+  const body = $('#ideaBody').value.trim();
+  if (!body) { toast('Escreva a ideia antes de adicionar.'); $('#ideaBody').focus(); return; }
+  const day = parseInt($('#ideaDay').value, 10);
+  ideas.unshift({ id: Date.now(), col:'soltas', names: $('#ideaNames').value.trim(), body, day: day > 0 ? day : undefined });
+  store.set('rd.ideas', ideas);
+  renderKanban();
+  closeLayer($('#ideaSheet'));
+  $('#kanban').scrollTo({ left: 0, behavior: 'smooth' });
+  toast('Ideia adicionada em Soltas.');
+});
+
+/* =========================================================
+   5. ESTÚDIO
+   O textarea é a fonte da verdade: o que estiver nele é exatamente o que vai
+   para o proxy. O botão "Inserir no prompt" monta base do personagem + look e
+   joga no topo, com BREAK, preservando o que já estava escrito embaixo.
+   ========================================================= */
+const BASE = {
+  elena: { name:'Elena Silva', text:'Elena Silva, adult woman, long wavy black hair, violet eyes, no glasses' },
+  mia:   { name:'Mia',         text:'Mia, adult woman, short copper bob, green eyes, round glasses' },
+  clara: { name:'Clara',       text:'Clara, adult woman, shoulder-length platinum blonde hair, grey eyes, pearl earrings' }
+};
+const LOOKS = {
+  none:     { label:'Sem look', text:'' },
+  casa:     { label:'Casa',     text:'casual home outfit, soft knit cardigan' },
+  rua:      { label:'Rua',      text:'jeans, light jacket, sneakers' },
+  trabalho: { label:'Trabalho', text:'tailored blazer, office attire' }
+};
+const SEP = '\nBREAK\n';
+const studio = { selected: [], look: 'none' };
+
+const sel = $('#charSelect');
+const ta  = $('#prompt');
+
+const charBlock = k => [BASE[k].text, LOOKS[studio.look].text].filter(Boolean).join(', ');
+const composePrompt = () => ta.value;
+
+function renderSelChips() {
+  $('#selChips').innerHTML = studio.selected.length
+    ? studio.selected.map(k => `<button type="button" class="sel-chip" data-remove="${k}" aria-label="Remover ${BASE[k].name}">${BASE[k].name}<span aria-hidden="true">✕</span></button>`).join('')
+    : '<span class="sel-empty">Nenhuma personagem escolhida.</span>';
+}
+
+function renderLooks() {
+  $('#lookChips').innerHTML = Object.entries(LOOKS).map(([k, v]) =>
+    `<button class="chip" type="button" role="radio" aria-checked="${studio.look === k}" data-look="${k}">${v.label}</button>`).join('');
+}
+
+const promptBlocks = () => ta.value.split(/\bBREAK\b/).map(t => t.trim()).filter(Boolean);
+
+function renderMeta() {
+  const n = promptBlocks().length;
+  $('#promptMeta').innerHTML = `<span>${fmt(ta.value.length)} caracteres</span><span>${n} bloco${n === 1 ? '' : 's'} separados por BREAK</span>`;
+}
+
+function setSelection(keys) {
+  [...sel.options].forEach(o => { o.selected = keys.includes(o.value); });
+  studio.selected = [...sel.selectedOptions].map(o => o.value);
+  renderSelChips();
+}
+
+sel.addEventListener('change', () => {
+  studio.selected = [...sel.selectedOptions].map(o => o.value);
+  renderSelChips();
+});
+
+/* Desktop: clique alterna a opção sem segurar Ctrl/Cmd */
+sel.addEventListener('mousedown', e => {
+  const opt = e.target.closest('option');
+  if (!opt) return;
+  e.preventDefault();
+  opt.selected = !opt.selected;
+  sel.focus();
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+});
+
+$('#selChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-remove]');
+  if (b) setSelection(studio.selected.filter(k => k !== b.dataset.remove));
+});
+
+$('#lookChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-look]');
+  if (!b) return;
+  studio.look = b.dataset.look;
+  renderLooks();
+});
+
+ta.addEventListener('input', renderMeta);
+
+/* ---------- Inserir no prompt ----------
+   Base do personagem + look entram no topo, separados por BREAK.
+   O que a pessoa já escreveu continua embaixo, intacto. */
+function inserirNoPrompt() {
+  if (!studio.selected.length) { toast('Escolha pelo menos uma personagem.'); sel.focus(); return; }
+  const atual = ta.value;
+  const novos = studio.selected.map(charBlock).filter(b => !atual.includes(b));
+  if (!novos.length) { toast('Essas bases já estão no prompt.'); return; }
+
+  const base = novos.join(SEP);
+  ta.value = atual.trim() ? base + SEP + atual.replace(/^\s+/, '') : base + SEP;
+  renderMeta();
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  const nomes = studio.selected.filter(k => novos.includes(charBlock(k))).map(k => BASE[k].name);
+  toast(`${listPt(nomes)} ${nomes.length > 1 ? 'entraram' : 'entrou'} no prompt.`);
+}
+$('#btnInsert').addEventListener('click', inserirNoPrompt);
+
+
+/* ---------- Modelos e modos ----------
+   modelVersionId: cole aqui o id real de cada modelo (o mesmo usado nos scripts do Termux).
+   Não é segredo, então pode ficar no HTML. */
+const MODELS = [
+  { label: 'Tsubaki.2 (anime atual, DiT)',     id: '1983308862240288769' },
+  { label: 'Haruka v2 (anime clássico, SDXL)', id: '1861558740588989558' },
+  { label: 'Hoshino v2 (estética retrô, SDXL)', id: '1954632828118619567' }
+];
+const MODES = ['fast', 'standard', 'quality', 'ultra'];
+const DEFAULT_MODE = 'standard';
+const RATIOS = { '1:1': [1, 1], '2:3': [2, 3], '3:4': [3, 4], '3:2': [3, 2], '4:3': [4, 3], '9:16': [9, 16], '16:9': [16, 9] };
+
+function renderModels() {
+  $('#pModel').innerHTML = MODELS.map((m, i) =>
+    `<option value="${i}">${esc(m.label)}${m.id ? '' : ' (sem id)'}</option>`).join('');
+  $('#pMode').innerHTML = MODES.map(m => `<option>${esc(m)}</option>`).join('');
+  $('#pMode').value = DEFAULT_MODE;
+}
+const currentModel = () => MODELS[+$('#pModel').value] || MODELS[0];
+
+/* Seed: vazio = aleatória (o campo não vai no JSON). Só aceita inteiro >= 0. */
+function readSeed() {
+  const raw = $('#pSeed').value.trim();
+  if (!raw) return { ok: true, value: undefined };
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) return { ok: false, value: undefined };
+  return { ok: true, value: Number(raw) };
+}
+
+/* Campos vazios ficam undefined e o JSON.stringify os omite */
+function buildPayload() {
+  const negative = $('#negative').value.trim();
+  return {
+    prompt: composePrompt().replace(/\s*BREAK\s*$/, '').trim(),   // sem BREAK solto no fim
+    negative_prompt: negative || undefined,
+    aspectRatio: $('#pRatio').value,
+    mode: $('#pMode').value,
+    modelVersionId: currentModel().id,
+    batchSize: Number($('#pBatch').value) === 4 ? 4 : 1,   // PixAI aceita 1 ou 4
+    seed: readSeed().value
+  };
+}
+
+/* ---------- Pré-visualizar ---------- */
+$('#btnPreview').addEventListener('click', () => {
+  const full = composePrompt();
+  const payload = buildPayload();
+  if (!payload.modelVersionId) payload.modelVersionId = '(preencher em MODELS)';
+  const body = {
+    secret: cfg.get('gas_secret') ? '••••••' : '(senha não configurada)',
+    action: 'create',
+    payload
+  };
+  const parts = promptBlocks();
+  const blocks = parts.map((t, i) => `
+    <div class="pv-block${i === parts.length - 1 ? ' manual' : ''}"><h4>Bloco ${i + 1}</h4><p>${esc(t)}</p></div>
+    ${i < parts.length - 1 ? '<p class="pv-break">BREAK</p>' : ''}`).join('');
+
+  $('#pvContent').innerHTML = `
+    <p class="help">${parts.length} bloco${parts.length === 1 ? '' : 's'}, ${fmt(full.length)} caracteres.</p>
+    ${blocks || '<p class="help"><em>Prompt vazio.</em></p>'}
+    <p class="field-label" style="margin-top:22px">Corpo enviado ao proxy</p>
+    <div class="pv-raw">${esc(JSON.stringify(body, null, 2))}</div>
+    ${readSeed().ok ? '' : '<p class="help" style="color:var(--bad)">A seed precisa ser um número inteiro. Do jeito que está, ela não será enviada.</p>'}
+    <button type="button" class="btn btn-block" style="margin-top:18px" id="copyPrompt">Copiar prompt</button>`;
+
+  $('#copyPrompt').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(full); toast('Prompt copiado.'); }
+    catch (_) { toast('Não foi possível copiar. Selecione o texto e copie manualmente.'); }
+  });
+  openLayer($('#previewSheet'));
+});
+
+/* ---------- Motor PixAI via proxy (Google Apps Script) ----------
+   CORS: nenhum header é definido. Com o body em string, o navegador envia
+   Content-Type: text/plain;charset=UTF-8, que é "simple request" e não gera preflight.
+   A senha (gas_secret) vai em toda chamada, inclusive nos "check". */
+async function gasCall(body) {
+  const url = cfg.get('gas_url');
+  const secret = cfg.get('gas_secret');
+  if (!url) throw new Error('A URL do proxy não está configurada.');
+  if (!secret) throw new Error('A senha do proxy não está configurada.');
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', body: JSON.stringify({ secret, ...body }), redirect: 'follow' });
+  } catch (_) {
+    throw new Error('Não foi possível falar com o proxy. Confira a URL e se o deploy do Apps Script está liberado para "Qualquer pessoa".');
+  }
+  const text = await res.text();
+  if (!res.ok) throw new Error(`O proxy respondeu com erro ${res.status}.`);
+  let data;
+  try { data = JSON.parse(text); }
+  catch (_) { throw new Error('O proxy não devolveu JSON. Confira se a URL termina em /exec e se o deploy está atualizado.'); }
+  if (data && data.error) {
+    const msg = typeof data.error === 'string' ? data.error : (data.error.message || 'O proxy devolveu um erro.');
+    const authHint = /secret|senha|unauthori|forbidden|denied|negad|401|403/i.test(msg)
+      ? ' Confira a senha do proxy nas configurações.' : '';
+    throw new Error(msg + authHint);
+  }
+  return data;
+}
+
+/* Aceita a resposta crua do PixAI ou embrulhada pelo proxy */
+const pick = (obj, paths) => {
+  for (const p of paths) {
+    const v = p.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+};
+const taskIdOf = d => pick(d, ['taskId', 'id', 'task.id', 'data.taskId', 'data.id']);
+const statusOf = d => String(pick(d, ['status', 'task.status', 'data.status']) || '').toLowerCase();
+const mediaOf  = d => {
+  const v = pick(d, ['outputs.mediaUrls', 'task.outputs.mediaUrls', 'data.outputs.mediaUrls']);
+  return Array.isArray(v) ? v : [];
+};
+const isHttps = u => { try { return new URL(u).protocol === 'https:'; } catch (_) { return false; } };
+
+const POLL_MS = 3000;     // intervalo pedido: 3 s
+const MAX_POLLS = 200;    // ~10 min
+const MAX_FAILS = 3;      // falhas de rede seguidas antes de desistir
+const gen = { busy: false, timer: null, inFlight: false, polls: 0, fails: 0, taskId: '', ratio: [2, 3], ratioKey: '2:3', who: '', batch: 1, urls: [] };
+
+function setGenBusy(on) {
+  gen.busy = on;
+  const btn = $('#btnGenerate');
+  btn.disabled = on;
+  btn.textContent = on ? 'Gerando…' : 'Gerar';
+}
+
+function stopPolling() {
+  clearInterval(gen.timer);
+  gen.timer = null;
+  gen.inFlight = false;
+}
+
+function renderGenStatus(title, sub = '') {
+  let t = $('#genTitle');
+  if (!t) {
+    $('#output').innerHTML = `
+      <div class="skeleton" style="aspect-ratio:${gen.ratio[0]}/${gen.ratio[1]}">
+        <div class="gen-status"><span class="spinner" aria-hidden="true"></span>
+          <p><span id="genTitle"></span><small id="genSub"></small></p>
+        </div>
+      </div>`;
+    t = $('#genTitle');
+  }
+  t.textContent = title;
+  $('#genSub').textContent = sub;
+}
+
+function renderGenError(msg) {
+  $('#output').innerHTML = `
+    <div class="card out-error">
+      <p class="notice-title">Não foi possível gerar</p>
+      <p class="notice-body">${esc(msg)}</p>
+      <button class="btn" style="margin-top:14px" type="button" data-retry>Tentar de novo</button>
+    </div>`;
+}
+
+function failGeneration(err) {
+  stopPolling();
+  setGenBusy(false);
+  renderGenError(err && err.message ? err.message : 'Erro inesperado.');
+}
+
+function finishGeneration(data) {
+  stopPolling();
+  setGenBusy(false);
+  const urls = mediaOf(data).filter(u => isHttps(u) || /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u));
+  if (!urls.length) { renderGenError('A tarefa terminou, mas o PixAI não devolveu nenhuma imagem (outputs.mediaUrls vazio).'); return; }
+  gen.urls = urls;
+
+  const many = urls.length > 1;
+  $('#output').innerHTML = `
+    <figure>
+      <div class="out-grid ${many ? 'two' : ''}">
+        ${urls.map((_, i) => `
+          <div>
+            <img data-idx="${i}" decoding="async">
+            ${many ? `<a class="link-btn" style="display:inline-block;margin-top:6px" data-open="${i}" target="_blank" rel="noopener noreferrer">Abrir ${i + 1}</a>` : ''}
+          </div>`).join('')}
+      </div>
+      <figcaption class="out-caption">${many ? `${urls.length} imagens geradas` : 'Imagem gerada'} ${esc(gen.who)}, ${esc(gen.ratioKey)}.
+        <small id="genNote">Tarefa ${esc(gen.taskId)}. O PixAI apaga os arquivos, então baixe agora.</small>
+      </figcaption>
+      <div class="btn-row" style="margin-top:14px">
+        ${many ? '' : '<a class="btn btn-primary" data-open="0" target="_blank" rel="noopener noreferrer">Abrir para baixar</a>'}
+        <button class="btn" type="button" data-copy-url>${many ? 'Copiar links' : 'Copiar link'}</button>
+      </div>
+    </figure>`;
+
+  /* URLs entram por propriedade, nunca concatenadas no HTML */
+  $$('#output img[data-idx]').forEach(img => {
+    const i = +img.dataset.idx;
+    img.alt = `Imagem ${i + 1} gerada ${gen.who}`;
+    img.addEventListener('error', () => { $('#genNote').textContent = 'Uma prévia não carregou aqui, mas o link pode abrir normalmente.'; }, { once: true });
+    img.src = urls[i];
+  });
+  $$('#output [data-open]').forEach(a => {
+    const u = urls[+a.dataset.open];
+    a.href = u;
+    // navegador bloqueia abrir data URL em aba nova: nesse caso vira download direto
+    if (u.startsWith('data:')) { a.download = `rd-studio-${gen.taskId}-${+a.dataset.open + 1}.png`; a.removeAttribute('target'); }
+  });
+  $('#output').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast(many ? 'Imagens prontas.' : 'Imagem pronta.');
+}
+
+async function pollTask() {
+  if (gen.inFlight) return;
+  if (++gen.polls > MAX_POLLS) {
+    failGeneration(new Error(`O PixAI demorou demais. Consulte a tarefa ${gen.taskId} mais tarde.`));
+    return;
+  }
+  gen.inFlight = true;
+  try {
+    const data = await gasCall({ action: 'check', taskId: gen.taskId });
+    if (!gen.timer) return;                  // geração já encerrada
+    gen.fails = 0;
+    const st = statusOf(data);
+    const extra = gen.batch > 1 ? ` Lote de ${gen.batch}.` : '';
+    if (st === 'completed') finishGeneration(data);
+    else if (st === 'waiting' || st === 'running' || !st) renderGenStatus('Gerando imagem…', (st === 'running' ? 'Processando no PixAI.' : 'Na fila do PixAI.') + extra);
+    else failGeneration(new Error(`A tarefa terminou com status "${st}".`));
+  } catch (err) {
+    if (++gen.fails >= MAX_FAILS) failGeneration(err);
+  } finally {
+    gen.inFlight = false;
+  }
+}
+
+async function startGeneration() {
+  if (gen.busy) return;
+  const payload = buildPayload();
+  if (!payload.prompt) { toast('Selecione uma personagem ou escreva um prompt para gerar.'); return; }
+  if (!cfg.get('gas_url') || !cfg.get('gas_secret')) {
+    if (confirm('Faltam a URL ou a senha do proxy do PixAI. Configurar agora?')) openSettings();
+    return;
+  }
+  if (!payload.modelVersionId) {
+    renderGenError(`Falta o modelVersionId de ${currentModel().label}. Preencha o id na lista MODELS, no início do bloco do Estúdio.`);
+    return;
+  }
+  if (!readSeed().ok) {
+    toast('A seed precisa ser um número inteiro, ou fique vazia para aleatória.');
+    $('#pSeed').focus();
+    return;
+  }
+
+  const names = studio.selected.map(k => BASE[k].name);
+  gen.who = names.length ? `com ${listPt(names)}` : 'sem personagens';
+  gen.ratioKey = payload.aspectRatio;
+  gen.ratio = RATIOS[payload.aspectRatio] || [2, 3];
+  gen.batch = payload.batchSize;
+  gen.polls = 0;
+  gen.fails = 0;
+  gen.taskId = '';
+  gen.urls = [];
+
+  setGenBusy(true);
+  $('#output').innerHTML = '';
+  renderGenStatus('Enviando para o PixAI…');
+
+  try {
+    const data = await gasCall({ action: 'create', payload });
+    const taskId = taskIdOf(data);
+    if (!taskId) throw new Error('O proxy respondeu, mas sem taskId.');
+    gen.taskId = String(taskId);
+    if (statusOf(data) === 'completed') { finishGeneration(data); return; }
+    renderGenStatus('Gerando imagem…', 'Na fila do PixAI.' + (gen.batch > 1 ? ` Lote de ${gen.batch}.` : ''));
+    gen.timer = setInterval(pollTask, POLL_MS);
+  } catch (err) {
+    failGeneration(err);
+  }
+}
+
+$('#btnGenerate').addEventListener('click', startGeneration);
+
+$('#output').addEventListener('click', async e => {
+  if (e.target.closest('[data-retry]')) { startGeneration(); return; }
+  if (e.target.closest('[data-copy-url]')) {
+    try { await navigator.clipboard.writeText(gen.urls.join('\n')); toast(gen.urls.length > 1 ? 'Links copiados.' : 'Link copiado.'); }
+    catch (_) { toast('Não foi possível copiar.'); }
+  }
+});
+
+/* ---------- Salvar ---------- */
+function renderSaved() {
+  const list = store.get('rd.prompts', []);
+  $('#savedList').innerHTML = list.length ? list.map(it => {
+    const who = it.selected.length ? listPt(it.selected.map(k => BASE[k]?.name || k)) : 'Sem personagens';
+    const when = new Date(it.at).toLocaleString('pt-BR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    return `
+      <li>
+        <div class="min-w-0">
+          <p class="who">${esc(who)}${it.look && it.look !== 'none' ? `, look ${esc(LOOKS[it.look].label.toLowerCase())}` : ''}</p>
+          <p class="what">${esc((it.text || it.manual || '').replace(/\s*BREAK\s*/g, ' | ').trim()) || '<em>Sem texto</em>'}</p>
+          <p class="when">${when}</p>
+        </div>
+        <div class="acts">
+          <button type="button" data-use="${it.id}">Usar</button>
+          <button type="button" class="del" data-del="${it.id}" aria-label="Excluir prompt salvo">Excluir</button>
+        </div>
+      </li>`;
+  }).join('') : '<li style="grid-template-columns:1fr" class="text-[15px] text-muted">Nenhum prompt salvo. Use Salvar para guardar a combinação atual.</li>';
+}
+
+$('#btnSave').addEventListener('click', () => {
+  if (!ta.value.trim()) { toast('Nada para salvar ainda.'); return; }
+  const list = store.get('rd.prompts', []);
+  list.unshift({ id: Date.now(), selected: [...studio.selected], look: studio.look, text: ta.value,
+    negative: $('#negative').value, batch: $('#pBatch').value, seed: $('#pSeed').value, at: Date.now() });
+  store.set('rd.prompts', list.slice(0, 20));
+  renderSaved();
+  toast('Prompt salvo.');
+});
+
+$('#savedList').addEventListener('click', e => {
+  const use = e.target.closest('[data-use]');
+  const del = e.target.closest('[data-del]');
+  if (use) {
+    const it = store.get('rd.prompts', []).find(x => x.id === +use.dataset.use);
+    if (!it) return;
+    ta.value = it.text ?? it.manual ?? '';
+    studio.look = it.look || 'none';
+    $('#negative').value = it.negative || '';
+    if (it.batch) $('#pBatch').value = it.batch;
+    $('#pSeed').value = it.seed || '';
+    renderLooks();
+    setSelection(it.selected || []);
+    renderMeta();
+    ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Prompt carregado no editor.');
+  }
+  if (del) {
+    store.set('rd.prompts', store.get('rd.prompts', []).filter(x => x.id !== +del.dataset.del));
+    renderSaved();
+    toast('Prompt excluído.');
+  }
+});
+
+/* =========================================================
+   Configurações: ficam só no localStorage deste aparelho.
+   A URL do proxy, o Client ID e o ID do Tracker não são segredo.
+   A senha do proxy fica só neste aparelho; o token do PixAI vive só no Apps Script.
+   ========================================================= */
+const cfg = {
+  get(k) {
+    try { const v = localStorage.getItem(k); if (v) return v; } catch (_) {}
+    return store.mem['cfg:' + k] || '';
+  },
+  set(k, v) {
+    store.mem['cfg:' + k] = v;
+    try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (_) {}
+  }
+};
+
+function askGasUrl() {
+  const input = prompt('Insira a URL do Google Apps Script (Proxy PixAI):', cfg.get('gas_url'));
+  if (input == null) return false;
+  const v = input.trim();
+  if (!v) { cfg.set('gas_url', ''); return true; }
+  if (!isHttps(v)) { alert('A URL do proxy precisa começar com https://. Nada foi alterado.'); return false; }
+  if (!/^https:\/\/script\.google\.com\//.test(v) &&
+      !confirm('Essa URL não parece ser de um Apps Script (script.google.com). Salvar mesmo assim?')) return false;
+  cfg.set('gas_url', v);
+  return true;
+}
+
+function askClientId() {
+  const input = prompt('Insira o Client ID do Google Cloud:', cfg.get('gcp_client_id'));
+  if (input == null) return false;
+  const v = input.trim();
+  if (v && !/\.apps\.googleusercontent\.com$/.test(v) &&
+      !confirm('Esse Client ID não termina em .apps.googleusercontent.com. Salvar mesmo assim?')) return false;
+  if (v !== cfg.get('gcp_client_id')) {
+    cfg.set('gcp_client_id', v);
+    clearDriveToken();          // token antigo pertence a outro Client ID
+    drive.tokenClient = null;
+    resetTracker();
+  }
+  return true;
+}
+
+const SECRET_MASK = '••••••';
+
+function askSecret() {
+  const has = !!cfg.get('gas_secret');
+  // Nunca mostra a senha salva: o campo vem mascarado e, se não mudar, nada é alterado
+  const input = prompt('Insira a Senha do Proxy:', has ? SECRET_MASK : '');
+  if (input == null || input === SECRET_MASK) return false;
+  cfg.set('gas_secret', input.trim());
+  return true;
+}
+
+function askTrackerId() {
+  const input = prompt('ID do arquivo Progress_Tracker no Drive:', cfg.get('tracker_file_id'));
+  if (input == null) return false;
+  const v = extractDriveId(input.trim());
+  if (v && !/^[\w-]{10,}$/.test(v)) { alert('Isso não parece um ID do Drive. Nada foi alterado.'); return false; }
+  if (v !== cfg.get('tracker_file_id')) {
+    cfg.set('tracker_file_id', v);
+    resetTracker();
+  }
+  return true;
+}
+
+function openSettings() {
+  // Array literal: os quatro prompts rodam em sequência
+  const changed = [askGasUrl(), askSecret(), askClientId(), askTrackerId()].some(Boolean);
+  initTokenClient();
+  renderConnections();
+  if (changed) toast('Configurações salvas neste aparelho.');
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-settings]')) openSettings();
+});
+
+function renderConnections() {
+  const url = cfg.get('gas_url');
+  let tail = '';
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const i = parts.indexOf('s');
+    tail = i >= 0 ? (parts[i + 1] || '').slice(-6) : '';
+  } catch (_) {}
+  const hasSecret = !!cfg.get('gas_secret');
+  $('#gasState').textContent = url
+    ? `URL salva neste aparelho${tail ? `, final …${tail}` : ''}. ${hasSecret ? 'Senha salva.' : 'Falta a senha.'}`
+    : 'URL não configurada.';
+  const ready = !!url && hasSecret;
+  const tag = $('#gasTag');
+  tag.textContent = ready ? 'Configurado' : 'Pendente';
+  tag.className = 'tag ' + (ready ? 'tag-ok' : 'tag-warn');
+  renderDrive();
+}
+
+/* =========================================================
+   Google Drive: login OAuth 2.0 (Google Identity Services)
+   O access_token fica só na memória desta aba. Nunca vai para o localStorage.
+   ========================================================= */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+const DRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+
+const drive = {
+  token: null,          // access_token da sessão
+  expiresAt: 0,
+  tokenClient: null,
+  clientIdUsed: '',
+  gisReady: false,
+  gisFailed: false,
+  gapiReady: false,
+  busy: false,
+  expiryTimer: null
+};
+
+function initTokenClient() {
+  const cid = cfg.get('gcp_client_id');
+  if (!drive.gisReady || !cid) { drive.tokenClient = null; return; }
+  if (drive.tokenClient && drive.clientIdUsed === cid) return;
+  drive.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cid,
+    scope: DRIVE_SCOPE,
+    callback: onTokenResponse,
+    error_callback: onTokenError
+  });
+  drive.clientIdUsed = cid;
+}
+
+function onTokenResponse(resp) {
+  drive.busy = false;
+  if (!resp || resp.error) {
+    toast(`Login não concluído: ${(resp && (resp.error_description || resp.error)) || 'resposta vazia'}.`);
+    renderDrive();
+    return;
+  }
+  if (!google.accounts.oauth2.hasGrantedAllScopes(resp, DRIVE_SCOPE)) {
+    toast('A permissão de leitura do Drive não foi concedida.');
+    renderDrive();
+    return;
+  }
+  drive.token = resp.access_token;
+  drive.expiresAt = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+  if (drive.gapiReady) gapi.client.setToken({ access_token: drive.token });
+
+  clearTimeout(drive.expiryTimer);
+  drive.expiryTimer = setTimeout(() => {
+    clearDriveToken();
+    toast('A sessão do Drive expirou. Conecte de novo.');
+  }, Math.max(0, drive.expiresAt - Date.now() - 60000));
+
+  renderDrive();
+  toast('Drive conectado.');
+  if (cfg.get('tracker_file_id')) lerTrackerReal();   // primeira leitura automática
+}
+
+function onTokenError(err) {
+  drive.busy = false;
+  renderDrive();
+  const type = err && err.type;
+  toast(type === 'popup_closed' ? 'Login cancelado.'
+    : type === 'popup_failed_to_open' ? 'O navegador bloqueou o pop-up de login. Libere pop-ups para este site.'
+    : 'Não foi possível abrir o login do Google.');
+}
+
+function clearDriveToken() {
+  drive.token = null;
+  drive.expiresAt = 0;
+  clearTimeout(drive.expiryTimer);
+  if (drive.gapiReady) gapi.client.setToken(null);
+  renderDrive();
+}
+
+function connectDrive() {
+  if (drive.token) {
+    if (!confirm('Desconectar do Google Drive?')) return;
+    const old = drive.token;
+    clearDriveToken();
+    resetTracker();             // o conteúdo privado sai da tela junto com o login
+    try { google.accounts.oauth2.revoke(old, () => {}); } catch (_) {}
+    toast('Drive desconectado.');
+    return;
+  }
+  if (location.protocol === 'file:') {
+    toast('O login do Google não funciona em arquivo local. Abra pelo GitHub Pages ou por um servidor http.');
+    return;
+  }
+  if (!cfg.get('gcp_client_id')) {
+    if (confirm('Falta o Client ID do Google Cloud. Configurar agora?')) openSettings();
+    return;
+  }
+  if (!drive.gisReady) {
+    toast(drive.gisFailed ? 'O login do Google não carregou. Confira a conexão e recarregue.' : 'O login do Google ainda está carregando. Tente em alguns segundos.');
+    return;
+  }
+  initTokenClient();
+  drive.busy = true;
+  renderDrive();
+  // Chamado direto no clique para o navegador aceitar o pop-up
+  drive.tokenClient.requestAccessToken({ prompt: '' });
+}
+
+$('#btnDrive').addEventListener('click', connectDrive);
+
+function renderDrive() {
+  renderTracker();
+  const btn = $('#btnDrive'), state = $('#driveState'), tag = $('#driveTag');
+  const hasClient = !!cfg.get('gcp_client_id');
+  btn.classList.toggle('btn-connected', !!drive.token);
+  btn.disabled = drive.busy;
+
+  if (drive.token) {
+    const until = new Date(drive.expiresAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    btn.textContent = 'Drive Conectado';
+    state.textContent = `Leitura liberada até ${until}. Toque no botão para desconectar.`;
+    tag.textContent = 'Conectado';
+    tag.className = 'tag tag-ok';
+    return;
+  }
+  btn.textContent = drive.busy ? 'Abrindo login…' : 'Conectar ao Drive';
+  state.textContent = !hasClient ? 'Client ID não configurado.'
+    : drive.gisFailed ? 'O login do Google não carregou.'
+    : 'Desconectado. O token fica só na memória desta aba.';
+  tag.textContent = hasClient ? 'Desconectado' : 'Pendente';
+  tag.className = 'tag' + (hasClient ? '' : ' tag-warn');
+}
+
+/* Os scripts do Google carregam em async: espera cada um ficar pronto */
+function whenScript(id, isReady, onReady, onFail) {
+  if (isReady()) { onReady(); return; }
+  const el = document.getElementById(id);
+  if (!el) { onFail(); return; }
+  el.addEventListener('load', onReady, { once: true });
+  el.addEventListener('error', onFail, { once: true });
+}
+
+function bootGoogle() {
+  whenScript('gsiScript',
+    () => !!(window.google && google.accounts && google.accounts.oauth2),
+    () => { drive.gisReady = true; initTokenClient(); renderDrive(); },
+    () => { drive.gisFailed = true; renderDrive(); });
+
+  whenScript('gapiScript',
+    () => !!(window.gapi && gapi.load),
+    () => gapi.load('client', async () => {
+      try {
+        await gapi.client.init({});
+        await gapi.client.load(DRIVE_DISCOVERY);
+        drive.gapiReady = true;
+        if (drive.token) gapi.client.setToken({ access_token: drive.token });
+        if (tracker.pending && drive.token) lerTrackerReal();
+      } catch (err) {
+        console.warn('GAPI não inicializou:', err);
+      }
+    }),
+    () => console.warn('api.js não carregou.'));
+}
+
+/* =========================================================
+   Progress_Tracker: leitura real no Drive (só com token ativo).
+   O conteúdo fica só na memória desta aba, nunca no localStorage.
+   ========================================================= */
+const tracker = { busy: false, pending: false, text: '', name: '', modifiedTime: '', syncedAt: 0, error: '' };
+
+/* Aceita o ID puro ou o link inteiro do arquivo */
+function extractDriveId(v) {
+  const m = v.match(/\/d\/([\w-]{10,})/) || v.match(/[?&]id=([\w-]{10,})/);
+  return m ? m[1] : v;
+}
+
+function resetTracker() {
+  Object.assign(tracker, { busy: false, pending: false, text: '', name: '', modifiedTime: '', syncedAt: 0, error: '' });
+  renderTracker();
+}
+
+/* O gapi às vezes devolve UTF-8 como "binary string" (NÃ£o no lugar de Não) */
+function fixMojibake(s) {
+  if (!/[ÃÂ][\u0080-\u00BF]/.test(s)) return s;
+  for (const ch of s) if (ch.charCodeAt(0) > 255) return s;
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(s, c => c.charCodeAt(0))); }
+  catch (_) { return s; }
+}
+
+/* Arquivos nativos do Google não aceitam alt=media: precisam de export */
+const EXPORT_AS = {
+  'application/vnd.google-apps.document': 'text/plain',
+  'application/vnd.google-apps.spreadsheet': 'text/csv',
+  'application/vnd.google-apps.presentation': 'text/plain'
+};
+
+function driveErrorMessage(err) {
+  const apiErr = err && err.result && err.result.error;
+  const status = (err && err.status) || (apiErr && apiErr.code);
+  if (status === 401) return 'A sessão do Drive expirou. Conecte de novo.';
+  if (status === 403) return 'Sem permissão para ler este arquivo. Confira se ele está na conta conectada e se a Google Drive API está ativada no projeto do Google Cloud.';
+  if (status === 404) return 'Arquivo não encontrado. Confira o ID do Progress_Tracker nas configurações.';
+  return apiErr && apiErr.message ? `O Drive respondeu: ${apiErr.message}` : 'Não foi possível ler o arquivo no Drive.';
+}
+
+async function lerTrackerReal() {
+  if (!drive.token) { toast('Conecte o Drive antes de sincronizar.'); renderTracker(); return; }
+  const fileId = cfg.get('tracker_file_id');
+  if (!fileId) {
+    if (confirm('Falta o ID do Progress_Tracker. Configurar agora?')) openSettings();
+    return;
+  }
+  if (!drive.gapiReady || !gapi.client.drive) {
+    tracker.pending = true;
+    toast('A API do Drive ainda está carregando. A leitura começa assim que ela ficar pronta.');
+    return;
+  }
+  if (tracker.busy) return;
+
+  tracker.busy = true;
+  tracker.pending = false;
+  tracker.error = '';
+  renderTracker();
+
+  try {
+    gapi.client.setToken({ access_token: drive.token });
+
+    // 1) Metadados: nome, tipo e data de alteração
+    const meta = await gapi.client.drive.files.get({ fileId, fields: 'name,mimeType,modifiedTime', supportsAllDrives: true });
+    const { name = '', mimeType = '', modifiedTime = '' } = meta.result || {};
+
+    // 2) Conteúdo: .md/.txt via alt=media; Google Docs/Sheets via export
+    let res;
+    if (EXPORT_AS[mimeType]) {
+      res = await gapi.client.drive.files.export({ fileId, mimeType: EXPORT_AS[mimeType] });
+    } else if (mimeType.startsWith('application/vnd.google-apps.')) {
+      throw { result: { error: { message: `o tipo ${mimeType} não pode ser lido como texto.` } } };
+    } else {
+      res = await gapi.client.drive.files.get({ fileId, alt: 'media', supportsAllDrives: true });
+    }
+
+    tracker.text = fixMojibake(typeof res.body === 'string' ? res.body : '').replace(/^\uFEFF/, '');
+    tracker.name = name;
+    tracker.modifiedTime = modifiedTime;
+    tracker.syncedAt = Date.now();
+    toast('Tracker sincronizado.');
+  } catch (err) {
+    tracker.error = driveErrorMessage(err);
+    if (err && err.status === 401) clearDriveToken();
+  } finally {
+    tracker.busy = false;
+    renderTracker();
+  }
+}
+
+$('#btnTracker').addEventListener('click', lerTrackerReal);
+
+function renderTracker() {
+  const btn = $('#btnTracker');
+  if (!btn) return;
+  const hasId = !!cfg.get('tracker_file_id');
+  const meta = $('#trackerMeta'), errEl = $('#trackerError'), out = $('#trackerText');
+
+  btn.disabled = tracker.busy;
+  btn.textContent = tracker.busy ? 'Sincronizando…' : 'Sincronizar Tracker';
+  btn.classList.toggle('btn-primary', !!drive.token && hasId && !tracker.busy);
+  $('#trackerCard').setAttribute('aria-busy', String(tracker.busy));
+
+  if (tracker.busy) {
+    meta.textContent = 'Lendo o arquivo no Drive…';
+  } else if (tracker.syncedAt) {
+    const changed = tracker.modifiedTime
+      ? new Date(tracker.modifiedTime).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
+    const synced = new Date(tracker.syncedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    meta.textContent = `${tracker.name || 'Arquivo'}${changed ? `, alterado no Drive em ${changed}` : ''}. Sincronizado às ${synced}.`;
+  } else if (!drive.token) {
+    meta.textContent = 'Conecte o Drive para ler o arquivo real.';
+  } else if (!hasId) {
+    meta.textContent = 'Falta o ID do arquivo. Use Configurações.';
+  } else {
+    meta.textContent = 'Pronto para sincronizar.';
+  }
+
+  errEl.hidden = !tracker.error;
+  errEl.textContent = tracker.error;
+
+  // textContent: o markdown aparece como texto, sem virar HTML
+  out.hidden = !tracker.syncedAt;
+  out.textContent = tracker.text || '(arquivo vazio)';
+}
+
+/* =========================================================
+   PWA
+   ========================================================= */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+/* =========================================================
+   Inicialização
+   ========================================================= */
+renderToday();
+renderDays();
+renderCastFilters();
+renderCast();
+renderKanban();
+renderLooks();
+renderSelChips();
+renderMeta();
+renderSaved();
+renderModels();
+renderConnections();
+bootGoogle();
+showView(location.hash.slice(1) || 'hoje');
+</script>
+</body>
+</html>
