@@ -40,6 +40,7 @@ deste aparelho (o ícone de engrenagem no topo leva para a mesma aba):
 | `gas_secret` | Senha que o proxy exige |
 | `gcp_client_id` | Client ID do Google Cloud |
 | `tracker_file_id` | ID do arquivo Progress_Tracker no Drive |
+| `chapters_folder_id` | ID da pasta de capítulos no Drive |
 
 Progress_Tracker_ver27.txt: `1t5JtcVdvu4L2Ye544H3JhuwN9aWUHyyg`
 (cada nova versão é um arquivo novo, com ID novo).
@@ -88,7 +89,10 @@ Modos: fast, standard, quality, ultra. Lote: 1 ou 4.
 
 Tudo está no `index.html`, em blocos comentados:
 
-- `BASE` e `LOOKS`: descrições base das personagens e os looks do Estúdio
+- `CAST`: as 29 fichas reais (papel, grupo, lock visual, conhecimento, pack)
+- `LOOKS`: os looks aplicados ao prompt no Estúdio
+- locks visuais coladas dentro do app ficam em `localStorage` na chave `rd.locks`
 - `MODELS`, `MODES`, `RATIOS`: opções do PixAI
-- `DAYS`, `CAST`, `IDEAS_SEED`: dados de exemplo das abas Capítulos, Elenco e Ideias
+- `DAYS` e `IDEAS_SEED`: dados de exemplo das abas Hoje e Ideias
+- `listarCapitulos()` e `abrirLeituraCapitulo()`: lista e leitura dos capítulos no Drive
 - `lerTrackerReal()`: leitura do Progress_Tracker no Drive

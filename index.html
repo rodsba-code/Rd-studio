@@ -198,6 +198,7 @@
   .selected-chips{display:flex;flex-wrap:wrap;gap:8px;min-height:32px;margin-top:12px}
   .sel-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 7px 5px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);font-size:15px}
   .sel-chip span[aria-hidden]{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface-2);font-size:12px}
+  .sel-chip.is-warn{border-color:var(--warn-line);color:var(--warn)}
   .sel-empty{align-self:center;font-size:14.5px;color:var(--dim)}
   .prompt-box{min-height:300px;resize:vertical;font-family:var(--mono);font-size:15px;line-height:1.65;padding:18px}
   .guard{transition:color .2s}
@@ -246,6 +247,7 @@
   .prose p{font-family:var(--serif);font-size:20px;line-height:1.75;margin:0;text-indent:1.5em;hyphens:auto;-webkit-hyphens:auto}
   .prose p.first,.prose .break+p{text-indent:0}
   .prose .break{text-align:center;color:var(--dim);letter-spacing:.6em;margin:26px 0;font-size:18px;text-indent:0}
+  .prose-raw{font-family:var(--serif);font-size:19.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
   .rd-empty{border:1px dashed var(--line-2);border-radius:22px;padding:26px;text-align:center;color:var(--muted);font-size:16px;line-height:1.55}
   .rd-nav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:44px}
 
@@ -327,10 +329,13 @@
   <section class="view" data-view="capitulos" hidden>
     <p class="eyebrow">Calendário</p>
     <h1 class="display">Um capítulo, um dia</h1>
-    <p class="lede">Toque no dia para ler o capítulo. Se o texto for longo, a leitura rola.</p>
-    <p class="mt-5 text-[15px] text-muted" id="daySummary"></p>
+    <p class="lede">Os arquivos vêm direto da pasta de capítulos no Drive. Toque para ler em tela cheia.</p>
+    <div class="section-head" style="margin-top:26px">
+      <p class="conn-state" id="chaptersMeta"></p>
+      <button class="btn btn-sm" type="button" id="btnChapters">Recarregar</button>
+    </div>
+    <p class="notice-body" id="chaptersError" style="color:var(--bad)" hidden></p>
     <div class="day-grid" id="dayGrid"></div>
-    <p class="demo-note">Dados de exemplo. Substitua pelo Progress_Tracker.</p>
   </section>
 
   <!-- ================= ELENCO ================= -->
@@ -338,6 +343,7 @@
     <p class="eyebrow">Elenco</p>
     <h1 class="display" id="castTitle"></h1>
     <p class="lede">O Drive é dono da sheet. Aqui você vê pack, lock visual e o que cada uma já sabe.</p>
+    <p class="mt-5 text-[15px] text-muted" id="castSummary"></p>
     <input class="input" style="margin-top:28px" id="castSearch" type="search" placeholder="Buscar nome, papel ou grupo" aria-label="Buscar no elenco">
     <div class="chip-row" style="margin-top:14px" role="radiogroup" aria-label="Filtrar por grupo" id="castFilters"></div>
     <div class="stack" style="margin-top:20px" id="castList"></div>
@@ -360,13 +366,10 @@
 
     <div class="field" style="margin-top:30px">
       <label class="field-label" for="charSelect">Personagens (cola a lock visual)</label>
-      <select id="charSelect" class="input char-select" multiple size="3" aria-describedby="selHelp">
-        <option value="elena">Elena Silva</option>
-        <option value="mia">Mia</option>
-        <option value="clara">Clara</option>
-      </select>
-      <p class="help" id="selHelp">Toque para marcar ou desmarcar. Dá para escolher mais de uma.</p>
+      <select id="charSelect" class="input char-select" multiple size="7" aria-describedby="selHelp"></select>
+      <p class="help" id="selHelp">Toque para marcar ou desmarcar. Quem está marcada com (sem lock) entra só com o nome: cole a lock na aba Elenco.</p>
       <div class="selected-chips" id="selChips" aria-live="polite"></div>
+      <p class="help" id="selWarn" style="color:var(--warn)" hidden></p>
     </div>
 
     <div class="field">
@@ -452,6 +455,13 @@
         <p class="help">Pode colar o link inteiro: o app extrai o ID sozinho.</p>
       </div>
 
+      <div class="field">
+        <label class="field-label" for="cfgChapters">ID da pasta de capítulos no Drive</label>
+        <input class="input mono-input" id="cfgChapters" type="text" autocomplete="off" spellcheck="false"
+               placeholder="ID ou link da pasta">
+        <p class="help">Abra a pasta no Drive e cole o link: o app extrai o ID.</p>
+      </div>
+
       <button class="btn btn-primary btn-block" style="margin-top:22px" type="button" id="btnSaveConfig">Salvar configurações</button>
       <button class="btn btn-block" style="margin-top:10px" type="button" id="btnTestConn">Testar conexão com o proxy</button>
       <button class="btn btn-block" style="margin-top:10px" type="button" id="btnClearConfig">Apagar tudo deste aparelho</button>
@@ -516,8 +526,8 @@
       <div class="rd-rule"></div>
       <div class="prose" id="rdText"></div>
       <div class="rd-nav">
-        <button class="btn" type="button" id="rdPrev">Dia anterior</button>
-        <button class="btn" type="button" id="rdNext">Próximo dia</button>
+        <button class="btn" type="button" id="rdPrev">Anterior</button>
+        <button class="btn" type="button" id="rdNext">Próximo</button>
       </div>
     </article>
   </div>
@@ -554,6 +564,28 @@
     <div class="field"><label class="field-label" for="ideaDay">Dia (opcional)</label>
       <input class="input" id="ideaDay" type="number" min="1" inputmode="numeric" placeholder="Sem data"></div>
     <button class="btn btn-primary btn-block" style="margin-top:24px" type="button" id="ideaAdd">Adicionar em Soltas</button>
+  </div>
+</div>
+
+<!-- ================= LOCK VISUAL ================= -->
+<div class="layer sheet" id="lockSheet" role="dialog" aria-modal="true" aria-labelledby="lockTitle" hidden>
+  <div class="sheet-panel">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="h2" id="lockTitle"></h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="help" style="margin-top:8px">No seed: <span id="lockSeed"></span></p>
+    <div class="field">
+      <label class="field-label" for="lockText">Lock visual para o prompt (inglês)</label>
+      <textarea class="input mono-input" id="lockText" rows="4" spellcheck="false"
+                placeholder="Nome, adult woman, long black hair, green eyes, glasses"></textarea>
+      <p class="help">Fica salva neste aparelho e entra no prompt quando a personagem for escolhida no Estúdio.</p>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:18px" type="button" id="lockSave">Salvar lock</button>
+    <button class="btn btn-block" style="margin-top:10px" type="button" id="lockClear">Remover lock deste aparelho</button>
   </div>
 </div>
 
@@ -688,101 +720,270 @@ function renderToday() {
       <span class="tag">Write bloqueado</span>
     </div>
     <div class="btn-row" style="margin-top:22px">
-      <button class="btn btn-primary" type="button" data-read="${d.n}">Abrir capítulo</button>
+      <button class="btn btn-primary" type="button" data-go="capitulos">Abrir capítulos</button>
       <button class="btn" type="button" data-go="capitulos">Ver dias ${d.n}–${d.n + 2}</button>
     </div>`;
 }
 
 /* =========================================================
-   2. CAPÍTULOS + leitor
+   2. CAPÍTULOS: lista real da pasta do Drive + leitor em tela cheia
    ========================================================= */
-const PARAGRAPHS = [
-  'A manhã começou devagar. A casa ainda cheirava a café requentado e a madeira encerada, e o relógio da cozinha adiantava os mesmos quatro minutos de sempre.',
-  'Rod desceu a escada contando os degraus, um hábito que não sabia de onde vinha. No corredor, as fotos antigas continuavam tortas, como se ninguém tivesse coragem de endireitá-las.',
-  'Elena já estava à mesa, com a lista de compras dobrada em quatro e uma caneta sem tampa. Tinha o jeito de quem organiza a semana inteira antes das oito.',
-  '— Hoje a gente passa no mercado antes do almoço — disse ela, sem levantar os olhos. — E você carrega as sacolas.',
-  'Lá fora, a rua acordava aos poucos: um portão rangendo, um cachorro insistente, o ônibus das oito e dez que nunca passava às oito e dez.',
-  'O campus tinha aquele barulho de começo de semestre, feito de conversas cruzadas e passos apressados. Ninguém parecia saber exatamente onde ficava a sala certa.',
-  'No prédio de artes, as paredes eram cobertas de cartazes sobrepostos, alguns tão antigos que as datas já não diziam nada a ninguém.',
-  'O resto da tarde passou em pedaços: uma fila longa, uma conversa interrompida, um recado deixado na geladeira com a letra apertada de sempre.',
-  'À noite, a casa ficou em silêncio de um jeito diferente. Não era cansaço. Era a sensação de que alguma coisa tinha mudado de lugar e ninguém tinha avisado.',
-  'Rod apagou a luz do quarto e ficou ouvindo o som distante da cidade, pensando que amanhã seria outro dia e que, por enquanto, isso bastava.'
-];
-const dayWords = n => 2400 + (n * 137) % 1800;
+const chapters = { busy:false, pending:false, items:[], loadedAt:0, error:'', current:-1 };
 
-function chapterText(n) {
-  const out = [];
-  for (let i = 0; i < 18; i++) {
-    if (i > 0 && i % 6 === 0) out.push('<p class="break" aria-hidden="true">* * *</p>');
-    out.push(`<p class="${i === 0 ? 'first' : ''}">${esc(PARAGRAPHS[(i + n * 3) % PARAGRAPHS.length])}</p>`);
+const TIPO = {
+  'application/vnd.google-apps.document': 'Doc',
+  'application/vnd.google-apps.spreadsheet': 'Sheet',
+  'text/plain': 'TXT',
+  'text/markdown': 'MD',
+  'application/pdf': 'PDF'
+};
+const tipoLabel = m => TIPO[m] || (m || '').split('/').pop().slice(0, 8).toUpperCase() || 'Arquivo';
+
+/* Nome do arquivo em formato legível, e o número do dia quando existir */
+function nomeBonito(nome) {
+  return nome.replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function numeroDoNome(nome) {
+  const m = nome.match(/(?:dia|cap[ií]tulo|cap)[ _-]*(\d{1,3})/i) || nome.match(/\b(\d{1,3})\b/);
+  return m ? m[1] : '';
+}
+
+function resetChapters() {
+  Object.assign(chapters, { busy:false, pending:false, items:[], loadedAt:0, error:'', current:-1 });
+  renderChapters();
+}
+
+async function listarCapitulos() {
+  if (!drive.token) { toast('Conecte o Drive na aba Config antes de listar os capítulos.'); renderChapters(); return; }
+  const folderId = cfg.get('chapters_folder_id');
+  if (!folderId) {
+    if (confirm('Falta o ID da pasta de capítulos. Configurar agora?')) openSettings('cfgChapters');
+    return;
   }
-  return out.join('');
+  if (!/^[\w-]{10,}$/.test(folderId)) { chapters.error = 'O ID da pasta parece inválido. Confira na aba Config.'; renderChapters(); return; }
+  if (!drive.gapiReady || !gapi.client.drive) {
+    chapters.pending = true;
+    toast('A API do Drive ainda está carregando. A lista vem assim que ela ficar pronta.');
+    return;
+  }
+  if (chapters.busy) return;
+
+  chapters.busy = true;
+  chapters.pending = false;
+  chapters.error = '';
+  renderChapters();
+
+  try {
+    gapi.client.setToken({ access_token: drive.token });
+    const res = await gapi.client.drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      orderBy: 'name',
+      pageSize: 200,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    chapters.items = (res.result.files || []).filter(f => f.mimeType !== 'application/vnd.google-apps.folder');
+    chapters.loadedAt = Date.now();
+    toast(`${chapters.items.length} ${chapters.items.length === 1 ? 'arquivo' : 'arquivos'} na pasta.`);
+  } catch (err) {
+    chapters.error = driveErrorMessage(err);
+    if (err && err.status === 401) clearDriveToken();
+  } finally {
+    chapters.busy = false;
+    renderChapters();
+  }
+}
+$('#btnChapters').addEventListener('click', listarCapitulos);
+
+function renderChapters() {
+  const btn = $('#btnChapters'), meta = $('#chaptersMeta'), errEl = $('#chaptersError'), grid = $('#dayGrid');
+  if (!btn) return;
+  const temPasta = !!cfg.get('chapters_folder_id');
+
+  btn.disabled = chapters.busy;
+  btn.textContent = chapters.busy ? 'Lendo…' : 'Recarregar';
+  errEl.hidden = !chapters.error;
+  errEl.textContent = chapters.error;
+
+  if (chapters.busy) meta.textContent = 'Lendo a pasta no Drive…';
+  else if (chapters.loadedAt) meta.textContent = `${chapters.items.length} ${chapters.items.length === 1 ? 'arquivo' : 'arquivos'}, lidos às ${new Date(chapters.loadedAt).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}.`;
+  else if (!drive.token) meta.textContent = 'Conecte o Drive na aba Config.';
+  else if (!temPasta) meta.textContent = 'Falta o ID da pasta na aba Config.';
+  else meta.textContent = 'Toque em Recarregar para listar a pasta.';
+
+  if (!chapters.items.length) {
+    grid.innerHTML = chapters.loadedAt && !chapters.error
+      ? '<p class="empty-state">Nenhum arquivo nessa pasta.</p>'
+      : (chapters.busy ? '<p class="empty-state">Carregando…</p>' : '');
+    return;
+  }
+
+  grid.innerHTML = chapters.items.map((f, i) => {
+    const n = numeroDoNome(f.name);
+    return `
+      <button class="day" type="button" data-cap="${i}" aria-label="Ler ${esc(nomeBonito(f.name))}">
+        <span class="day-top">
+          <span class="day-num">${n || '·'}</span>
+          <span class="day-wd">${esc(tipoLabel(f.mimeType))}</span>
+        </span>
+        <span class="day-focus">${esc(nomeBonito(f.name))}</span>
+      </button>`;
+  }).join('');
 }
 
-function renderDays() {
-  const c = s => DAYS.filter(d => d.status === s).length;
-  $('#daySummary').textContent = `${c('feito')} feitos, ${c('aberto')} aberto e ${c('fila')} na fila.`;
-  $('#dayGrid').innerHTML = DAYS.map(d => `
-    <button class="day ${d.status === 'aberto' ? 'is-open' : ''}" type="button" data-read="${d.n}" aria-label="Dia ${d.n}, ${weekday(d.n)}: ${esc(d.focus)}. ${DAY_STATUS[d.status].label}">
-      <span class="day-top"><span class="day-num">${d.n}</span><span class="day-wd">${wdShort(d.n)}</span></span>
-      <span class="day-focus">${esc(d.focus)}</span>
-      <span class="tags"><span class="tag ${DAY_STATUS[d.status].cls}">${DAY_STATUS[d.status].label}</span></span>
-    </button>`).join('');
-}
+$('#dayGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-cap]');
+  if (!b) return;
+  const f = chapters.items[+b.dataset.cap];
+  if (f) abrirLeituraCapitulo(f.id, f.mimeType, f.name);
+});
 
-let readingDay = null;
-function openReader(n) {
-  const d = DAYS.find(x => x.n === n);
-  if (!d) return;
-  readingDay = n;
-  const hasText = d.status === 'feito';
-  const words = dayWords(n);
-  $('#rdBar').textContent = `Dia ${n} de ${DAYS.length}`;
-  $('#rdKicker').textContent = `Capítulo ${n}`;
-  $('#rdTitle').textContent = weekday(n);
-  $('#rdLead').textContent = d.synopsis;
-  $('#rdMeta').textContent = hasText
-    ? `${fmt(words)} palavras, ${Math.round(words / 230)} min de leitura. Texto simulado.`
-    : DAY_STATUS[d.status].label;
-  $('#rdText').innerHTML = hasText ? chapterText(n) : `
-    <div class="rd-empty">${d.status === 'aberto'
-      ? 'O rascunho deste dia ainda não existe. O Write só começa depois do LOCK no Drive.'
-      : 'Este dia está na fila. Nada foi escrito ainda.'}</div>`;
-  $('#rdPrev').disabled = n <= 1;
-  $('#rdNext').disabled = n >= DAYS.length;
+/* ---------- Leitura em tela cheia ---------- */
+async function abrirLeituraCapitulo(fileId, mimeType, nome) {
+  const i = chapters.items.findIndex(f => f.id === fileId);
+  chapters.current = i;
+
+  $('#rdBar').textContent = i >= 0 ? `Capítulo ${i + 1} de ${chapters.items.length}` : 'Capítulo';
+  $('#rdKicker').textContent = tipoLabel(mimeType);
+  $('#rdTitle').textContent = nomeBonito(nome || '');
+  $('#rdLead').textContent = '';
+  $('#rdMeta').textContent = '';
+  $('#rdText').innerHTML = '<div class="rd-empty">Carregando texto…</div>';
+  $('#rdPrev').disabled = i <= 0;
+  $('#rdNext').disabled = i < 0 || i >= chapters.items.length - 1;
   $('#rdBody').scrollTop = 0;
   $('#rdProgress').style.width = '0%';
   openLayer($('#reader'));
+
+  try {
+    const { text } = await lerArquivoTexto(fileId, mimeType);
+    if (chapters.current !== i) return;          // já trocou de capítulo
+    const limpo = text.trim();
+    if (!limpo) { $('#rdText').innerHTML = '<div class="rd-empty">Arquivo vazio.</div>'; return; }
+
+    // textContent + pre-wrap: o texto do Drive nunca vira HTML
+    $('#rdText').innerHTML = '';
+    const bloco = document.createElement('div');
+    bloco.className = 'prose-raw whitespace-pre-wrap';
+    bloco.textContent = text;
+    $('#rdText').appendChild(bloco);
+
+    const palavras = limpo.split(/\s+/).length;
+    $('#rdMeta').textContent = `${fmt(palavras)} palavras, ${Math.max(1, Math.round(palavras / 230))} min de leitura.`;
+  } catch (err) {
+    $('#rdText').innerHTML = `<div class="rd-empty">${esc(driveErrorMessage(err))}</div>`;
+    if (err && err.status === 401) clearDriveToken();
+  }
 }
 
-document.addEventListener('click', e => {
-  const r = e.target.closest('[data-read]');
-  if (r) openReader(+r.dataset.read);
-});
-$('#rdPrev').addEventListener('click', () => openReader(readingDay - 1));
-$('#rdNext').addEventListener('click', () => openReader(readingDay + 1));
+function irCapitulo(passo) {
+  const f = chapters.items[chapters.current + passo];
+  if (f) abrirLeituraCapitulo(f.id, f.mimeType, f.name);
+}
+$('#rdPrev').addEventListener('click', () => irCapitulo(-1));
+$('#rdNext').addEventListener('click', () => irCapitulo(1));
 $('#rdBody').addEventListener('scroll', e => {
   const el = e.currentTarget, max = el.scrollHeight - el.clientHeight;
   $('#rdProgress').style.width = (max > 0 ? el.scrollTop / max * 100 : 100) + '%';
 }, { passive: true });
 
 /* =========================================================
+   3. ELENCO/* =========================================================
    3. ELENCO
    ========================================================= */
+/* Elenco real, extraído do seed do projeto: 29 fichas.
+   base = prompt em inglês pronto. Vazio significa que a lock está na sheet do Drive
+   e pode ser colada aqui pelo próprio app (aba Elenco, botão Editar lock visual). */
 const CAST = [
-  { name:'Rod Silva',    role:'Protagonista',     group:'Casa',     pack:0, note:'Pack ainda vazio. Não inventar cara.', tags:[] },
-  { name:'Elena Silva',  role:'Tia, matriarca',   group:'Casa',     pack:5, note:'Cabelo preto longo com ondas, olhos violeta, sem óculos.', tags:[['Sabe','ok'], ['Refs velhas','bad']] },
-  { name:'Lydia Silva',  role:'Família Silva',    group:'Casa',     pack:5, note:'Indecisa sobre a casa para comprar.', tags:[['Refs velhas','bad']] },
-  { name:'Alexis Silva', role:'Família Silva',    group:'Casa',     pack:3, note:'Resiste à ida do Rod no dia 15.', tags:[['Não sabe','warn']] },
-  { name:'Scarlett',     role:'Visita do dia 15', group:'Trabalho', pack:2, note:'Chega no sábado e faz o convite.', tags:[['Lock pendente','warn']] },
-  { name:'Selene',       role:'Artes',            group:'Campus',   pack:5, note:'Aparece às segundas no prédio de artes.', tags:[['Sabe','ok']] },
-  { name:'Nora',         role:'Dia 16',           group:'Campus',   pack:4, note:'Beat exato ainda a definir.', tags:[] },
-  { name:'Sienna',       role:'Dia 16',           group:'Campus',   pack:4, note:'Não conta no campus neste dia.', tags:[] },
-  { name:'Mia',          role:'Teste do Estúdio', group:'Trabalho', pack:1, note:'Lock visual de exemplo.', tags:[['Lock pendente','warn']] },
-  { name:'Clara',        role:'Teste do Estúdio', group:'Trabalho', pack:1, note:'Lock visual de exemplo.', tags:[['Lock pendente','warn']] }
+  { id:'rod', name:'Rod Silva', role:'Protagonista', group:'casa', pack:0, know:'n_a',
+    personality:'Observa. Não antecipa. Terceira pessoa segue ele.', lock:'Pack ainda vazio — não inventar cara.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'elena', name:'Elena Silva', role:'Tia, matriarca', group:'casa', pack:5, know:'sabe',
+    personality:'Maternal, protetora, afetuosa. Gêmea idêntica de Lydia.', lock:'Cabelo preto longo com ondas, olhos violeta, sem óculos.', knowNote:'Viu. Protege. Não expõe na cidade.', stale:true, staleNote:'', base:'Elena Silva, adult woman, long wavy black hair, violet eyes, no glasses' },
+  { id:'lydia', name:'Lydia Silva', role:'Mãe', group:'casa', pack:5, know:'nao_cre',
+    personality:'Provocadora, psicóloga, gêmea idêntica de Elena.', lock:'Cabelo crimson longo, olhos azul-claros, óculos de aro preto sempre.', knowNote:'Avisada na manhã do Dia 14. Não crê até ver.', stale:true, staleNote:'', base:'Lydia Silva, adult woman, long crimson hair, light blue eyes, black-rimmed glasses' },
+  { id:'alexis', name:'Alexis Silva', role:'Irmã', group:'casa', pack:5, know:'sabe',
+    personality:'Resistente. Não quer Rod na visita da avó.', lock:'Rabo de cavalo azul-claro.', knowNote:'', stale:false, staleNote:'', base:'Alexis Silva, adult woman, light blue hair in a high ponytail' },
+  { id:'scarlett', name:'Scarlett', role:'Avó', group:'casa', pack:1, know:'nao_sabe',
+    personality:'Chega no Dia 15. Convida Rod, Lydia e Alexis.', lock:'Cara e cabelo da ref; sem jaqueta, sem taco.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'mia', name:'Mia', role:'Prima, próxima', group:'casa', pack:5, know:'sabe',
+    personality:'Próxima. Filha de Elena.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'clara', name:'Clara', role:'Prima, intelectual', group:'casa', pack:5, know:'sabe',
+    personality:'Afia o que os outros deixam passar. “Você ficou descuidado.”', lock:'Sheet no Drive.', knowNote:'Dia 14, quarto: percebeu o descuido.', stale:false, staleNote:'', base:'' },
+  { id:'sofia', name:'Sofia', role:'Prima, tímida', group:'casa', pack:5, know:'sabe',
+    personality:'Tímida. Confissão ainda aberta no Tracker antigo.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'nora', name:'Nora', role:'Vizinha', group:'casa', pack:5, know:'nao_sabe',
+    personality:'Confirmou domingo no Dia 14.', lock:'Sheet no Drive.', knowNote:'Domingo = Dia 16. Ainda não é fato até o LOCK.', stale:false, staleNote:'', base:'' },
+  { id:'emma', name:'Emma', role:'Sobrinha da Nora', group:'casa', pack:5, know:'nao_sabe',
+    personality:'Adulta. Pack completo. Sem cena no dia aberto.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'lily', name:'Lily', role:'Campus, ingênua', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Ingênua. Dia 14: tombo no corredor, sem comentário.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'tara', name:'Tara', role:'Rival', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Sabotagem no Dia 14 falhou.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'zoe', name:'Zoe', role:'Amiga atleta', group:'campus', pack:1, know:'nao_sabe',
+    personality:'Pode ser parceira de PE. Pack ainda estrutura.', lock:'Cara e cabelo da ref; sem uniforme da ref.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'bella', name:'Bella', role:'Popular', group:'campus', pack:0, know:'nao_sabe',
+    personality:'Amplifica o rumor no Dia 17. Pack vazio — prioridade depois de Sienna.', lock:'Pack vazio.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'raven', name:'Raven', role:'Amiga rebelde', group:'campus', pack:1, know:'nao_sabe',
+    personality:'Pack estrutura.', lock:'Cara só.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'sylvia', name:'Sylvia', role:'Amiga nerd', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Estudo em dupla — não empilhar com beat da Kori no mesmo cap.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'trisha', name:'Trisha', role:'Zeladora', group:'campus', pack:0, know:'nao_sabe',
+    personality:'Pack vazio. Fila depois de Sienna / Bella.', lock:'Pack vazio.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'kori', name:'Kori Lang', role:'Prof. matemática, terça', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Grade de terça. Beat de correção ainda IDEA.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'selene', name:'Selene Vega', role:'Prof. artes, segunda', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Grade de segunda. Pose de desenho ainda IDEA.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'isabella', name:'Isabella Morales', role:'Prof. literatura, quinta', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Grade de quinta. Trio Bella/Zoe já usado no Dia 13.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'seraphina', name:'Seraphina Voss', role:'Prof. física, sexta', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Mentoria 1 = USADA no Cap 14. Segunda sessão aponta Dia 21.', lock:'Sheet no Drive.', knowNote:'Clockou o rosto. Horário da semana que vem travado.', stale:false, staleNote:'', base:'' },
+  { id:'roxanne', name:'Roxanne Kane', role:'Prof. EF, quarta', group:'campus', pack:5, know:'nao_sabe',
+    personality:'Grade de quarta. Set de defesa pessoal ainda em OPTION (Dia 19).', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'liana', name:'Liana', role:'Inspetora', group:'campus', pack:1, know:'nao_sabe',
+    personality:'Pack estrutura.', lock:'Pack estrutura.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'diana', name:'Diana', role:'Diretora', group:'campus', pack:1, know:'nao_sabe',
+    personality:'Pack estrutura.', lock:'Pack estrutura.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'evelyn', name:'Evelyn', role:'Secretária da diretora', group:'campus', pack:1, know:'nao_sabe',
+    personality:'Pack estrutura.', lock:'Pack estrutura.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'sienna', name:'Sienna', role:'Cantina', group:'campus', pack:0, know:'nao_sabe',
+    personality:'Vê no Dia 16. Fala no Dia 17. Pack vazio — primeira da fila.', lock:'Pack vazio. Não inventar cara.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'victoria', name:'Victoria', role:'Chefe, confeitaria', group:'trabalho', pack:5, know:'nao_sabe',
+    personality:'Trabalho. Campus não sabe. Pack completo.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'elara', name:'Elara', role:'Entidade', group:'outro', pack:5, know:'n_a',
+    personality:'Virada do Dia 5. Cota mínima = 15. Não reabre o que Continuity já lockou.', lock:'Sheet no Drive.', knowNote:'', stale:false, staleNote:'', base:'' },
+  { id:'uc1', name:'Cliente 1', role:'Cliente sem nome', group:'trabalho', pack:1, know:'nao_sabe',
+    personality:'OPTION: pode ser a psicóloga Sabrina. Sem nome na página.', lock:'Cara e cabelo da ref; sem nome.', knowNote:'', stale:false, staleNote:'', base:'' }
 ];
-const GROUPS = ['Todos', 'Casa', 'Campus', 'Trabalho'];
-const castState = { q:'', group:'Todos' };
+
+const GROUP_LABEL = { casa:'Casa', campus:'Campus', trabalho:'Trabalho', outro:'Outro' };
+const KNOW_TAG = {
+  sabe:      ['Sabe', 'ok'],
+  nao_sabe:  ['Não sabe', ''],
+  nao_cre:   ['Não crê', 'warn'],
+  n_a:       ['', '']
+};
+const LOCK_VAZIA = /^(sheet no drive|pack vazio|pack estrutura|pack ainda vazio)/i;
+
+/* Locks coladas dentro do app ficam neste aparelho e têm prioridade sobre o seed */
+const locks = {
+  all: () => store.get('rd.locks', {}),
+  get: id => (locks.all()[id] || '').trim(),
+  set(id, texto) {
+    const todas = locks.all();
+    if (texto.trim()) todas[id] = texto.trim(); else delete todas[id];
+    store.set('rd.locks', todas);
+  }
+};
+
+const charOf   = id => CAST.find(c => c.id === id);
+const lockText = id => locks.get(id) || (LOCK_VAZIA.test(charOf(id).lock) ? '' : charOf(id).lock);
+/* Base do prompt: lock colada > base em inglês do seed > só o nome */
+const promptBase = id => locks.get(id) || charOf(id).base || `${charOf(id).name}, adult woman`;
+const temBase    = id => !!(locks.get(id) || charOf(id).base);
+
+const GROUPS = ['Todos', 'Casa', 'Campus', 'Trabalho', 'Outro'];
+const castState = { q: '', group: 'Todos' };
 
 function renderCastFilters() {
   $('#castFilters').innerHTML = GROUPS.map(g =>
@@ -790,30 +991,47 @@ function renderCastFilters() {
 }
 
 function renderCast() {
+  const semLock = CAST.filter(c => !temBase(c.id)).length;
   $('#castTitle').textContent = `${CAST.length} fichas. Uma por personagem.`;
-  const q = castState.q.trim().toLowerCase();
-  const list = CAST.filter(p =>
-    (castState.group === 'Todos' || p.group === castState.group) &&
-    (!q || [p.name, p.role, p.group].join(' ').toLowerCase().includes(q)));
+  $('#castSummary').textContent = semLock
+    ? `${CAST.length - semLock} com lock pronta para o Estúdio, ${semLock} ainda na sheet do Drive.`
+    : 'Todas com lock pronta para o Estúdio.';
 
-  $('#castList').innerHTML = list.length ? list.map(p => `
-    <article class="card person">
-      <div class="person-head">
-        <div class="mono" aria-hidden="true">${esc(p.name[0])}</div>
-        <div class="min-w-0">
-          <h3 class="person-name">${esc(p.name)}</h3>
-          <p class="person-role">${esc(p.role)}</p>
+  const q = castState.q.trim().toLowerCase();
+  const lista = CAST.filter(c =>
+    (castState.group === 'Todos' || GROUP_LABEL[c.group] === castState.group) &&
+    (!q || [c.name, c.role, GROUP_LABEL[c.group], c.personality].join(' ').toLowerCase().includes(q)));
+
+  $('#castList').innerHTML = lista.length ? lista.map(c => {
+    const [kLabel, kTone] = KNOW_TAG[c.know] || ['', ''];
+    const lock = lockText(c.id);
+    const tags = [
+      kLabel ? `<span class="tag ${kTone ? 'tag-' + kTone : ''}">${kLabel}</span>` : '',
+      c.stale ? '<span class="tag tag-bad">Refs velhas</span>' : '',
+      locks.get(c.id) ? '<span class="tag tag-ok">Lock no app</span>' : (temBase(c.id) ? '' : '<span class="tag tag-warn">Sem lock</span>')
+    ].filter(Boolean).join('');
+    return `
+      <article class="card person">
+        <div class="person-head">
+          <div class="mono" aria-hidden="true">${esc(c.name[0])}</div>
+          <div class="min-w-0">
+            <h3 class="person-name">${esc(c.name)}</h3>
+            <p class="person-role">${esc(c.role)}</p>
+          </div>
+          <span class="tag self-start">${GROUP_LABEL[c.group]}</span>
         </div>
-        <span class="tag self-start">${esc(p.group)}</span>
-      </div>
-      <p class="person-note">${esc(p.note)}</p>
-      <div class="person-foot">
-        <div class="tags">${p.tags.length ? p.tags.map(([t, tone]) => `<span class="tag tag-${tone}">${esc(t)}</span>`).join('') : '<span class="tag">—</span>'}</div>
-        <span class="pack-count">${p.pack}/5 pack</span>
-      </div>
-      <div class="pack" role="img" aria-label="Pack visual ${p.pack} de 5">${[0,1,2,3,4].map(i => `<span class="${i < p.pack ? 'on' : ''}"></span>`).join('')}</div>
-    </article>`).join('')
-    : '<p class="empty-state">Ninguém encontrado. Tente outro nome ou limpe o filtro.</p>';
+        ${c.personality ? `<p class="person-note">${esc(c.personality)}</p>` : ''}
+        <p class="person-note" style="color:var(--muted)">${esc(lock || c.lock)}</p>
+        ${c.knowNote ? `<p class="person-note" style="color:var(--muted)">${esc(c.knowNote)}</p>` : ''}
+        ${c.staleNote ? `<p class="person-note" style="color:var(--bad)">${esc(c.staleNote)}</p>` : ''}
+        <div class="person-foot">
+          <div class="tags">${tags || '<span class="tag">—</span>'}</div>
+          <span class="pack-count">${c.pack}/5 pack</span>
+        </div>
+        <div class="pack" role="img" aria-label="Pack visual ${c.pack} de 5">${[0,1,2,3,4].map(i => `<span class="${i < c.pack ? 'on' : ''}"></span>`).join('')}</div>
+        <button class="btn btn-subtle btn-sm btn-block" style="margin-top:14px" type="button" data-lock="${c.id}">Editar lock visual</button>
+      </article>`;
+  }).join('') : '<p class="empty-state">Ninguém encontrado. Tente outro nome ou limpe o filtro.</p>';
 }
 
 $('#castSearch').addEventListener('input', e => { castState.q = e.target.value; renderCast(); });
@@ -825,7 +1043,40 @@ $('#castFilters').addEventListener('click', e => {
   renderCast();
 });
 
+/* ---------- Editor de lock visual ---------- */
+let lockEditando = null;
+$('#castList').addEventListener('click', e => {
+  const b = e.target.closest('[data-lock]');
+  if (!b) return;
+  const c = charOf(b.dataset.lock);
+  lockEditando = c.id;
+  $('#lockTitle').textContent = c.name;
+  $('#lockSeed').textContent = c.lock;
+  $('#lockText').value = locks.get(c.id) || c.base || '';
+  openLayer($('#lockSheet'));
+  setTimeout(() => $('#lockText').focus(), 80);
+});
+
+$('#lockSave').addEventListener('click', () => {
+  if (!lockEditando) return;
+  locks.set(lockEditando, $('#lockText').value);
+  renderCast();
+  renderCharSelect();
+  renderSelChips();
+  closeLayer($('#lockSheet'));
+  toast('Lock visual salva neste aparelho.');
+});
+
+$('#lockClear').addEventListener('click', () => {
+  if (!lockEditando) return;
+  locks.set(lockEditando, '');
+  $('#lockText').value = '';
+  renderCast();
+  renderCharSelect();
+  toast('Lock do app removida. Vale o que vier do seed.');
+});
 /* =========================================================
+   4. IDEIAS/* =========================================================
    4. IDEIAS (kanban)
    ========================================================= */
 const COLUMNS = [
@@ -907,11 +1158,25 @@ $('#ideaAdd').addEventListener('click', () => {
    para o proxy. O botão "Inserir no prompt" monta base do personagem + look e
    joga no topo, com BREAK, preservando o que já estava escrito embaixo.
    ========================================================= */
-const BASE = {
-  elena: { name:'Elena Silva', text:'Elena Silva, adult woman, long wavy black hair, violet eyes, no glasses' },
-  mia:   { name:'Mia',         text:'Mia, adult woman, short copper bob, green eyes, round glasses' },
-  clara: { name:'Clara',       text:'Clara, adult woman, shoulder-length platinum blonde hair, grey eyes, pearl earrings' }
-};
+const BASE = new Proxy({}, {            // ponte: BASE[id].name / .text vêm do CAST
+  get: (_, id) => {
+    const c = charOf(id);
+    return c ? { name: c.name, text: promptBase(id) } : undefined;
+  },
+  has: (_, id) => !!charOf(id)
+});
+
+/* O select do Estúdio nasce do elenco real, agrupado por casa/campus/trabalho */
+function renderCharSelect() {
+  const marcadas = studio.selected;
+  sel.innerHTML = ['casa', 'campus', 'trabalho', 'outro'].map(g => {
+    const doGrupo = CAST.filter(c => c.group === g);
+    if (!doGrupo.length) return '';
+    return `<optgroup label="${GROUP_LABEL[g]}">` + doGrupo.map(c =>
+      `<option value="${c.id}">${esc(c.name)}${temBase(c.id) ? '' : ' (sem lock)'}</option>`).join('') + '</optgroup>';
+  }).join('');
+  [...sel.options].forEach(o => { o.selected = marcadas.includes(o.value); });
+}
 const LOOKS = {
   none:     { label:'Sem look', text:'' },
   casa:     { label:'Casa',     text:'casual home outfit, soft knit cardigan' },
@@ -924,13 +1189,17 @@ const studio = { selected: [], look: 'none' };
 const sel = $('#charSelect');
 const ta  = $('#prompt');
 
-const charBlock = k => [BASE[k].text, LOOKS[studio.look].text].filter(Boolean).join(', ');
+const charBlock = k => [promptBase(k), LOOKS[studio.look].text].filter(Boolean).join(', ');
 const composePrompt = () => ta.value;
 
 function renderSelChips() {
   $('#selChips').innerHTML = studio.selected.length
-    ? studio.selected.map(k => `<button type="button" class="sel-chip" data-remove="${k}" aria-label="Remover ${BASE[k].name}">${BASE[k].name}<span aria-hidden="true">✕</span></button>`).join('')
+    ? studio.selected.map(k => `<button type="button" class="sel-chip${temBase(k) ? '' : ' is-warn'}" data-remove="${k}" aria-label="Remover ${charOf(k).name}">${esc(charOf(k).name)}<span aria-hidden="true">✕</span></button>`).join('')
     : '<span class="sel-empty">Nenhuma personagem escolhida.</span>';
+
+  const sem = studio.selected.filter(k => !temBase(k)).map(k => charOf(k).name);
+  $('#selWarn').hidden = !sem.length;
+  $('#selWarn').textContent = sem.length ? `Sem lock visual: ${listPt(sem)}. Entram só com o nome até você colar a lock na aba Elenco.` : '';
 }
 
 function renderLooks() {
@@ -1384,7 +1653,8 @@ const CFG_FIELDS = [
   { id: 'cfgGas',     key: 'gas_url' },
   { id: 'cfgSecret',  key: 'gas_secret' },
   { id: 'cfgClient',  key: 'gcp_client_id' },
-  { id: 'cfgTracker', key: 'tracker_file_id' }
+  { id: 'cfgTracker', key: 'tracker_file_id' },
+  { id: 'cfgChapters', key: 'chapters_folder_id' }
 ];
 
 function loadConfigForm() {
@@ -1414,6 +1684,7 @@ function saveConfig() {
   const secret = $('#cfgSecret').value.trim();
   const client = $('#cfgClient').value.trim();
   const tracker = extractDriveId($('#cfgTracker').value.trim());
+  const pasta = extractDriveId($('#cfgChapters').value.trim());
 
   // Validação: nada é salvo se algum campo estiver claramente errado
   if (gas && !isHttps(gas)) { toast('A URL do proxy precisa começar com https://'); $('#cfgGas').focus(); return; }
@@ -1422,22 +1693,28 @@ function saveConfig() {
   if (client && !/\.apps\.googleusercontent\.com$/.test(client) &&
       !confirm('Esse Client ID não termina em .apps.googleusercontent.com. Salvar mesmo assim?')) return;
   if (tracker && !/^[\w-]{10,}$/.test(tracker)) { toast('Isso não parece um ID do Drive.'); $('#cfgTracker').focus(); return; }
+  if (pasta && !/^[\w-]{10,}$/.test(pasta)) { toast('O ID da pasta de capítulos parece inválido.'); $('#cfgChapters').focus(); return; }
 
   const clientMudou = client !== cfg.get('gcp_client_id');
   const trackerMudou = tracker !== cfg.get('tracker_file_id');
+  const pastaMudou = pasta !== cfg.get('chapters_folder_id');
 
   cfg.set('gas_url', gas);
   cfg.set('gas_secret', secret);
   cfg.set('gcp_client_id', client);
   cfg.set('tracker_file_id', tracker);
+  cfg.set('chapters_folder_id', pasta);
   $('#cfgTracker').value = tracker;          // se colou o link, mostra só o ID
+  $('#cfgChapters').value = pasta;
 
   if (clientMudou) {                          // token antigo pertence a outro Client ID
     clearDriveToken();
     drive.tokenClient = null;
     resetTracker();
-  } else if (trackerMudou) {
-    resetTracker();
+    resetChapters();
+  } else {
+    if (trackerMudou) resetTracker();
+    if (pastaMudou) resetChapters();
   }
 
   initTokenClient();
@@ -1503,6 +1780,7 @@ $('#btnClearConfig').addEventListener('click', () => {
   clearDriveToken();
   drive.tokenClient = null;
   resetTracker();
+  resetChapters();
   renderConnections();
   toast('Configurações apagadas.');
 });
@@ -1584,6 +1862,7 @@ function onTokenResponse(resp) {
   renderDrive();
   toast('Drive conectado.');
   if (cfg.get('tracker_file_id')) lerTrackerReal();   // primeira leitura automática
+  if (cfg.get('chapters_folder_id')) listarCapitulos();
 }
 
 function onTokenError(err) {
@@ -1609,6 +1888,7 @@ function connectDrive() {
     const old = drive.token;
     clearDriveToken();
     resetTracker();             // o conteúdo privado sai da tela junto com o login
+    resetChapters();
     try { google.accounts.oauth2.revoke(old, () => {}); } catch (_) {}
     toast('Drive desconectado.');
     return;
@@ -1636,6 +1916,7 @@ $('#btnDrive').addEventListener('click', connectDrive);
 
 function renderDrive() {
   renderTracker();
+  renderChapters();
   const btn = $('#btnDrive'), state = $('#driveState'), tag = $('#driveTag');
   const hasClient = !!cfg.get('gcp_client_id');
   btn.classList.toggle('btn-connected', !!drive.token);
@@ -1681,6 +1962,7 @@ function bootGoogle() {
         drive.gapiReady = true;
         if (drive.token) gapi.client.setToken({ access_token: drive.token });
         if (tracker.pending && drive.token) lerTrackerReal();
+        if (chapters.pending && drive.token) listarCapitulos();
       } catch (err) {
         console.warn('GAPI não inicializou:', err);
       }
@@ -1729,6 +2011,31 @@ function driveErrorMessage(err) {
   return apiErr && apiErr.message ? `O Drive respondeu: ${apiErr.message}` : 'Não foi possível ler o arquivo no Drive.';
 }
 
+/* Leitura de texto usada pelo Tracker e pelos capítulos.
+   Google Docs saem por export; .txt e .md por alt=media. */
+async function lerArquivoTexto(fileId, mimeType) {
+  gapi.client.setToken({ access_token: drive.token });
+
+  let meta = null;
+  if (!mimeType) {
+    const r = await gapi.client.drive.files.get({ fileId, fields: 'name,mimeType,modifiedTime', supportsAllDrives: true });
+    meta = r.result || {};
+    mimeType = meta.mimeType || '';
+  }
+
+  let res;
+  if (EXPORT_AS[mimeType]) {
+    res = await gapi.client.drive.files.export({ fileId, mimeType: EXPORT_AS[mimeType] });
+  } else if (mimeType.startsWith('application/vnd.google-apps.')) {
+    throw { result: { error: { message: `o tipo ${mimeType} não pode ser lido como texto.` } } };
+  } else {
+    res = await gapi.client.drive.files.get({ fileId, alt: 'media', supportsAllDrives: true });
+  }
+
+  const text = fixMojibake(typeof res.body === 'string' ? res.body : '').replace(/^\uFEFF/, '');
+  return { text, meta };
+}
+
 async function lerTrackerReal() {
   if (!drive.token) { toast('Conecte o Drive antes de sincronizar.'); renderTracker(); return; }
   const fileId = cfg.get('tracker_file_id');
@@ -1749,25 +2056,10 @@ async function lerTrackerReal() {
   renderTracker();
 
   try {
-    gapi.client.setToken({ access_token: drive.token });
-
-    // 1) Metadados: nome, tipo e data de alteração
-    const meta = await gapi.client.drive.files.get({ fileId, fields: 'name,mimeType,modifiedTime', supportsAllDrives: true });
-    const { name = '', mimeType = '', modifiedTime = '' } = meta.result || {};
-
-    // 2) Conteúdo: .md/.txt via alt=media; Google Docs/Sheets via export
-    let res;
-    if (EXPORT_AS[mimeType]) {
-      res = await gapi.client.drive.files.export({ fileId, mimeType: EXPORT_AS[mimeType] });
-    } else if (mimeType.startsWith('application/vnd.google-apps.')) {
-      throw { result: { error: { message: `o tipo ${mimeType} não pode ser lido como texto.` } } };
-    } else {
-      res = await gapi.client.drive.files.get({ fileId, alt: 'media', supportsAllDrives: true });
-    }
-
-    tracker.text = fixMojibake(typeof res.body === 'string' ? res.body : '').replace(/^\uFEFF/, '');
-    tracker.name = name;
-    tracker.modifiedTime = modifiedTime;
+    const { text, meta } = await lerArquivoTexto(fileId);
+    tracker.text = text;
+    tracker.name = (meta && meta.name) || '';
+    tracker.modifiedTime = (meta && meta.modifiedTime) || '';
     tracker.syncedAt = Date.now();
     toast('Tracker sincronizado.');
   } catch (err) {
@@ -1827,11 +2119,12 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
    Inicialização
    ========================================================= */
 renderToday();
-renderDays();
+renderChapters();
 renderCastFilters();
 renderCast();
 renderKanban();
 renderLooks();
+renderCharSelect();
 renderSelChips();
 renderMeta();
 renderSaved();
