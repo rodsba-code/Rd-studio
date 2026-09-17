@@ -453,7 +453,12 @@
       </div>
 
       <button class="btn btn-primary btn-block" style="margin-top:22px" type="button" id="btnSaveConfig">Salvar configurações</button>
+      <button class="btn btn-block" style="margin-top:10px" type="button" id="btnTestConn">Testar conexão com o proxy</button>
       <button class="btn btn-block" style="margin-top:10px" type="button" id="btnClearConfig">Apagar tudo deste aparelho</button>
+      <div id="diagBox" hidden>
+        <div class="tracker-text whitespace-pre-wrap" id="diagOut"></div>
+        <button class="btn btn-sm btn-block" style="margin-top:10px" type="button" id="btnCopyDiag">Copiar diagnóstico</button>
+      </div>
     </article>
 
     <h2 class="section-label">Status</h2>
@@ -1079,14 +1084,21 @@ async function gasCall(body) {
   let res;
   try {
     res = await fetch(url, { method: 'POST', body: JSON.stringify({ secret, ...body }), redirect: 'follow' });
-  } catch (_) {
-    throw new Error('Não foi possível falar com o proxy. Confira a URL e se o deploy do Apps Script está liberado para "Qualquer pessoa".');
+  } catch (err) {
+    throw new Error(describeFetchError(err, url));
   }
   const text = await res.text();
-  if (!res.ok) throw new Error(`O proxy respondeu com erro ${res.status}.`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText || ''} (type=${res.type}, redirecionado=${res.redirected}). Resposta: ${snippet(text)}`);
+  }
   let data;
   try { data = JSON.parse(text); }
-  catch (_) { throw new Error('O proxy não devolveu JSON. Confira se a URL termina em /exec e se o deploy está atualizado.'); }
+  catch (_) {
+    const html = /^\s*<(!doctype|html)/i.test(text);
+    throw new Error(html
+      ? `O proxy devolveu HTML em vez de JSON (provável tela de login do Google: o deploy não está com acesso "Qualquer pessoa", ou o script quebrou). Início: ${snippet(text)}`
+      : `Resposta não é JSON. Início: ${snippet(text)}`);
+  }
   if (data && data.error) {
     const msg = typeof data.error === 'string' ? data.error : (data.error.message || 'O proxy devolveu um erro.');
     const authHint = /secret|senha|unauthori|forbidden|denied|negad|401|403/i.test(msg)
@@ -1094,6 +1106,22 @@ async function gasCall(body) {
     throw new Error(msg + authHint);
   }
   return data;
+}
+
+/* ---------- Kit de diagnóstico ---------- */
+const snippet = (t, n = 240) => {
+  const limpo = String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
+  return limpo ? (limpo.length > n ? limpo.slice(0, n) + '…' : limpo) : '(resposta vazia)';
+};
+
+function describeFetchError(err, url) {
+  const nome = (err && err.name) || 'Error';
+  const msg  = (err && err.message) || String(err);
+  const rede = /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
+  const dica = rede
+    ? 'O navegador nem chegou a ler a resposta, o que é sintoma de CORS ou de rede. As causas mais comuns: o deploy do Apps Script não está com "Quem pode acessar: Qualquer pessoa" (o Google redireciona para a tela de login, que não libera CORS), a URL não termina em /exec, ou a implantação salva aqui é de outra versão.'
+    : 'Erro de rede antes da resposta.';
+  return `${nome}: ${msg} | origem: ${location.origin} | url: ${url} | ${dica}`;
 }
 
 /* Aceita a resposta crua do PixAI ou embrulhada pelo proxy */
@@ -1417,6 +1445,57 @@ function saveConfig() {
   toast('Configurações salvas neste aparelho.');
 }
 $('#btnSaveConfig').addEventListener('click', saveConfig);
+
+/* Testa o proxy em dois passos: GET simples e POST igual ao do app.
+   Usa o que está digitado nos campos, mesmo sem ter salvado ainda. */
+async function testarConexao() {
+  const url = ($('#cfgGas').value.trim() || cfg.get('gas_url'));
+  if (!url) { toast('Preencha a URL do proxy primeiro.'); $('#cfgGas').focus(); return; }
+  const btn = $('#btnTestConn');
+  btn.disabled = true; btn.textContent = 'Testando…';
+
+  const L = [`origem: ${location.origin}`, `url: ${url}`, ''];
+
+  try {
+    const t0 = Date.now();
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const txt = await res.text();
+    L.push(`GET: HTTP ${res.status} ${res.statusText || ''} em ${Date.now() - t0} ms`,
+           `type=${res.type} redirecionado=${res.redirected}`,
+           `corpo: ${snippet(txt)}`);
+  } catch (err) {
+    L.push(`GET falhou -> ${describeFetchError(err, url)}`);
+  }
+
+  L.push('');
+  try {
+    const secret = ($('#cfgSecret').value.trim() || cfg.get('gas_secret'));
+    const t0 = Date.now();
+    const res = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ secret, action: 'check', taskId: 'diagnostico' }),
+      redirect: 'follow'
+    });
+    const txt = await res.text();
+    L.push(`POST: HTTP ${res.status} ${res.statusText || ''} em ${Date.now() - t0} ms`,
+           `type=${res.type} redirecionado=${res.redirected}`,
+           `corpo: ${snippet(txt)}`);
+  } catch (err) {
+    L.push(`POST falhou -> ${describeFetchError(err, url)}`);
+  }
+
+  const texto = L.join('\n');
+  $('#diagOut').textContent = texto;
+  $('#diagBox').hidden = false;
+  btn.disabled = false; btn.textContent = 'Testar conexão com o proxy';
+  alert(texto);
+}
+$('#btnTestConn').addEventListener('click', testarConexao);
+
+$('#btnCopyDiag').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#diagOut').textContent); toast('Diagnóstico copiado.'); }
+  catch (_) { toast('Não foi possível copiar. Selecione o texto e copie na mão.'); }
+});
 
 $('#btnClearConfig').addEventListener('click', () => {
   if (!confirm('Apagar as quatro configurações deste aparelho?')) return;

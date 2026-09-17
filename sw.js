@@ -1,6 +1,6 @@
 /* RD Studio - service worker simples.
    Sobe o CACHE de versão sempre que publicar uma alteração no index.html. */
-const CACHE = 'rd-studio-v2';
+const CACHE = 'rd-studio-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
