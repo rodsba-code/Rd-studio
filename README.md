@@ -29,9 +29,10 @@ Ao publicar uma alteração no `index.html`, suba o número da versão em `sw.js
 O login não funciona abrindo o arquivo direto (`file://`). Para testar local:
 `python3 -m http.server 8000`.
 
-## Configurações do app (ícone de engrenagem)
+## Configurações do app (aba Config)
 
-São quatro prompts, salvos no `localStorage` deste aparelho:
+A última aba da barra inferior tem os quatro campos, salvos no `localStorage`
+deste aparelho (o ícone de engrenagem no topo leva para a mesma aba):
 
 | Chave | O que é |
 |---|---|

@@ -124,15 +124,19 @@
   .input:focus{outline:none;border-color:var(--paper)}
   .input::placeholder{color:var(--dim)}
   select.input:not([multiple]){appearance:none;-webkit-appearance:none;padding-right:44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0978C' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;background-size:18px}
+  .pw-row{display:flex;gap:10px;align-items:stretch}
+  .pw-row .input{flex:1;min-width:0}
+  .pw-row .btn{flex:none;white-space:nowrap}
+  .mono-input{font-family:var(--mono);font-size:14.5px}
   .help{margin-top:8px;font-size:14px;line-height:1.5;color:var(--muted)}
 
   /* ---------- navegação inferior ---------- */
   .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(12,11,10,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
   .bottom-nav ul{display:flex;justify-content:space-around;align-items:stretch;width:100%;max-width:600px;margin:0 auto;height:var(--nav-h)}
   .bottom-nav li{flex:1 1 0;min-width:0;display:flex}
-  .tab{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;transition:color .15s}
+  .tab{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0 2px;color:var(--dim);font-size:10px;letter-spacing:.04em;text-transform:uppercase;transition:color .15s}
   .tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tab svg{flex:none;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .tab svg{flex:none;width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
   .tab[aria-current="page"]{color:var(--text)}
 
   /* ---------- HOJE ---------- */
@@ -305,22 +309,8 @@
     <p class="eyebrow">Mesa de hoje</p>
     <h1 class="display" id="todayTitle"></h1>
     <p class="lede">O cânone continua no Drive. Aqui você vê o que está aberto, o que travou e o que falta gravar.</p>
-    <article class="card" style="margin-top:28px" aria-labelledby="connTitle">
-      <div class="flex items-center justify-between gap-3">
-        <p class="eyebrow" id="connTitle">Conexões</p>
-        <button class="link-btn" type="button" data-settings>Configurações</button>
-      </div>
-      <div class="conn-row" style="margin-top:6px">
-        <div class="min-w-0"><p class="conn-name">Proxy PixAI</p><p class="conn-state" id="gasState"></p></div>
-        <span class="tag" id="gasTag"></span>
-      </div>
-      <div class="conn-row">
-        <div class="min-w-0"><p class="conn-name">Google Drive</p><p class="conn-state" id="driveState" aria-live="polite"></p></div>
-        <span class="tag" id="driveTag"></span>
-      </div>
-      <button class="btn btn-block" style="margin-top:16px" type="button" id="btnDrive">Conectar ao Drive</button>
-    </article>
-    <article class="card" style="margin-top:12px" id="openCard"></article>
+    <article class="card" style="margin-top:28px" id="openCard"></article>
+
     <div class="section-head">
       <h2 class="h2">Progress_Tracker</h2>
       <p class="hint">Direto do Drive</p>
@@ -425,6 +415,63 @@
     <div class="section-head"><h2 class="h2">Prompts salvos</h2></div>
     <ul class="saved" id="savedList"></ul>
   </section>
+  <!-- ================= CONFIG ================= -->
+  <section class="view" data-view="config" hidden>
+    <p class="eyebrow">Configurações</p>
+    <h1 class="display">Conexões</h1>
+    <p class="lede">Os quatro campos ficam salvos só neste aparelho, no armazenamento do navegador. Nada disso vai para o GitHub.</p>
+
+    <article class="card" style="margin-top:28px">
+      <div class="field" style="margin-top:0">
+        <label class="field-label" for="cfgGas">URL do proxy (Apps Script)</label>
+        <input class="input mono-input" id="cfgGas" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+               placeholder="https://script.google.com/macros/s/.../exec">
+        <p class="help">Deploy do Apps Script publicado, terminando em /exec.</p>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cfgSecret">Senha do proxy</label>
+        <div class="pw-row">
+          <input class="input mono-input" id="cfgSecret" type="password" autocomplete="off" spellcheck="false" placeholder="Senha que o Apps Script exige">
+          <button class="btn btn-sm" type="button" id="btnShowSecret">Mostrar</button>
+        </div>
+        <p class="help">Vai em toda chamada ao proxy. Fica só aqui, nunca no código.</p>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cfgClient">Client ID do Google Cloud</label>
+        <input class="input mono-input" id="cfgClient" type="text" autocomplete="off" spellcheck="false"
+               placeholder="000000.apps.googleusercontent.com">
+        <p class="help">Credencial OAuth do tipo Web application, com esta origem autorizada.</p>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cfgTracker">ID do Progress_Tracker no Drive</label>
+        <input class="input mono-input" id="cfgTracker" type="text" autocomplete="off" spellcheck="false"
+               placeholder="ID ou link do arquivo">
+        <p class="help">Pode colar o link inteiro: o app extrai o ID sozinho.</p>
+      </div>
+
+      <button class="btn btn-primary btn-block" style="margin-top:22px" type="button" id="btnSaveConfig">Salvar configurações</button>
+      <button class="btn btn-block" style="margin-top:10px" type="button" id="btnClearConfig">Apagar tudo deste aparelho</button>
+    </article>
+
+    <h2 class="section-label">Status</h2>
+    <article class="card">
+      <div class="conn-row" style="margin-top:0">
+        <div class="min-w-0"><p class="conn-name">Proxy PixAI</p><p class="conn-state" id="gasState"></p></div>
+        <span class="tag" id="gasTag"></span>
+      </div>
+      <div class="conn-row">
+        <div class="min-w-0"><p class="conn-name">Google Drive</p><p class="conn-state" id="driveState" aria-live="polite"></p></div>
+        <span class="tag" id="driveTag"></span>
+      </div>
+      <button class="btn btn-block" style="margin-top:16px" type="button" id="btnDrive">Conectar ao Drive</button>
+    </article>
+
+    <p class="demo-note">O token do Drive vive só na memória desta aba e expira em cerca de 1 hora.</p>
+  </section>
+
 </main>
 
 <!-- ================= NAVEGAÇÃO ================= -->
@@ -440,6 +487,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21.5h4"/><path d="M12 2.5a6.5 6.5 0 0 0-3.8 11.8c.5.4.8 1 .8 1.7v.5h6V16c0-.7.3-1.3.8-1.7A6.5 6.5 0 0 0 12 2.5z"/></svg><span>Ideias</span></button></li>
     <li><button class="tab" type="button" data-go="estudio">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5.5-5.5L5 20"/></svg><span>Estúdio</span></button></li>
+    <li><button class="tab" type="button" data-go="config">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Config</span></button></li>
   </ul>
 </nav>
 
@@ -538,7 +588,7 @@ function toast(msg) {
 /* =========================================================
    Navegação
    ========================================================= */
-const TITLES = { hoje:'Hoje', capitulos:'Capítulos', elenco:'Elenco', ideias:'Ideias', estudio:'Estúdio' };
+const TITLES = { hoje:'Hoje', capitulos:'Capítulos', elenco:'Elenco', ideias:'Ideias', estudio:'Estúdio', config:'Config' };
 
 function showView(id) {
   if (!TITLES[id]) id = 'hoje';
@@ -1040,7 +1090,7 @@ async function gasCall(body) {
   if (data && data.error) {
     const msg = typeof data.error === 'string' ? data.error : (data.error.message || 'O proxy devolveu um erro.');
     const authHint = /secret|senha|unauthori|forbidden|denied|negad|401|403/i.test(msg)
-      ? ' Confira a senha do proxy nas configurações.' : '';
+      ? ' Confira a senha do proxy na aba Config.' : '';
     throw new Error(msg + authHint);
   }
   return data;
@@ -1180,7 +1230,7 @@ async function startGeneration() {
   const payload = buildPayload();
   if (!payload.prompt) { toast('Selecione uma personagem ou escreva um prompt para gerar.'); return; }
   if (!cfg.get('gas_url') || !cfg.get('gas_secret')) {
-    if (confirm('Faltam a URL ou a senha do proxy do PixAI. Configurar agora?')) openSettings();
+    if (confirm('Faltam a URL ou a senha do proxy do PixAI. Configurar agora?')) openSettings(cfg.get('gas_url') ? 'cfgSecret' : 'cfgGas');
     return;
   }
   if (!payload.modelVersionId) {
@@ -1301,69 +1351,85 @@ const cfg = {
   }
 };
 
-function askGasUrl() {
-  const input = prompt('Insira a URL do Google Apps Script (Proxy PixAI):', cfg.get('gas_url'));
-  if (input == null) return false;
-  const v = input.trim();
-  if (!v) { cfg.set('gas_url', ''); return true; }
-  if (!isHttps(v)) { alert('A URL do proxy precisa começar com https://. Nada foi alterado.'); return false; }
-  if (!/^https:\/\/script\.google\.com\//.test(v) &&
-      !confirm('Essa URL não parece ser de um Apps Script (script.google.com). Salvar mesmo assim?')) return false;
-  cfg.set('gas_url', v);
-  return true;
-}
+/* ---------- Formulário da aba Config ---------- */
+const CFG_FIELDS = [
+  { id: 'cfgGas',     key: 'gas_url' },
+  { id: 'cfgSecret',  key: 'gas_secret' },
+  { id: 'cfgClient',  key: 'gcp_client_id' },
+  { id: 'cfgTracker', key: 'tracker_file_id' }
+];
 
-function askClientId() {
-  const input = prompt('Insira o Client ID do Google Cloud:', cfg.get('gcp_client_id'));
-  if (input == null) return false;
-  const v = input.trim();
-  if (v && !/\.apps\.googleusercontent\.com$/.test(v) &&
-      !confirm('Esse Client ID não termina em .apps.googleusercontent.com. Salvar mesmo assim?')) return false;
-  if (v !== cfg.get('gcp_client_id')) {
-    cfg.set('gcp_client_id', v);
-    clearDriveToken();          // token antigo pertence a outro Client ID
-    drive.tokenClient = null;
-    resetTracker();
-  }
-  return true;
-}
-
-const SECRET_MASK = '••••••';
-
-function askSecret() {
-  const has = !!cfg.get('gas_secret');
-  // Nunca mostra a senha salva: o campo vem mascarado e, se não mudar, nada é alterado
-  const input = prompt('Insira a Senha do Proxy:', has ? SECRET_MASK : '');
-  if (input == null || input === SECRET_MASK) return false;
-  cfg.set('gas_secret', input.trim());
-  return true;
-}
-
-function askTrackerId() {
-  const input = prompt('ID do arquivo Progress_Tracker no Drive:', cfg.get('tracker_file_id'));
-  if (input == null) return false;
-  const v = extractDriveId(input.trim());
-  if (v && !/^[\w-]{10,}$/.test(v)) { alert('Isso não parece um ID do Drive. Nada foi alterado.'); return false; }
-  if (v !== cfg.get('tracker_file_id')) {
-    cfg.set('tracker_file_id', v);
-    resetTracker();
-  }
-  return true;
-}
-
-function openSettings() {
-  // Array literal: os quatro prompts rodam em sequência
-  const changed = [askGasUrl(), askSecret(), askClientId(), askTrackerId()].some(Boolean);
-  initTokenClient();
+function loadConfigForm() {
+  CFG_FIELDS.forEach(f => { $('#' + f.id).value = cfg.get(f.key); });
   renderConnections();
-  if (changed) toast('Configurações salvas neste aparelho.');
+}
+
+/* Abrir as configurações passou a ser ir para a aba, não mais um prompt */
+function openSettings(focusId) {
+  loadConfigForm();
+  showView('config');
+  if (focusId) setTimeout(() => { $('#' + focusId).focus(); $('#' + focusId).scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 120);
 }
 
 document.addEventListener('click', e => {
   if (e.target.closest('[data-settings]')) openSettings();
 });
 
+$('#btnShowSecret').addEventListener('click', () => {
+  const i = $('#cfgSecret'), showing = i.type === 'text';
+  i.type = showing ? 'password' : 'text';
+  $('#btnShowSecret').textContent = showing ? 'Mostrar' : 'Ocultar';
+});
+
+function saveConfig() {
+  const gas = $('#cfgGas').value.trim();
+  const secret = $('#cfgSecret').value.trim();
+  const client = $('#cfgClient').value.trim();
+  const tracker = extractDriveId($('#cfgTracker').value.trim());
+
+  // Validação: nada é salvo se algum campo estiver claramente errado
+  if (gas && !isHttps(gas)) { toast('A URL do proxy precisa começar com https://'); $('#cfgGas').focus(); return; }
+  if (gas && !/^https:\/\/script\.google\.com\//.test(gas) &&
+      !confirm('Essa URL não parece ser de um Apps Script (script.google.com). Salvar mesmo assim?')) return;
+  if (client && !/\.apps\.googleusercontent\.com$/.test(client) &&
+      !confirm('Esse Client ID não termina em .apps.googleusercontent.com. Salvar mesmo assim?')) return;
+  if (tracker && !/^[\w-]{10,}$/.test(tracker)) { toast('Isso não parece um ID do Drive.'); $('#cfgTracker').focus(); return; }
+
+  const clientMudou = client !== cfg.get('gcp_client_id');
+  const trackerMudou = tracker !== cfg.get('tracker_file_id');
+
+  cfg.set('gas_url', gas);
+  cfg.set('gas_secret', secret);
+  cfg.set('gcp_client_id', client);
+  cfg.set('tracker_file_id', tracker);
+  $('#cfgTracker').value = tracker;          // se colou o link, mostra só o ID
+
+  if (clientMudou) {                          // token antigo pertence a outro Client ID
+    clearDriveToken();
+    drive.tokenClient = null;
+    resetTracker();
+  } else if (trackerMudou) {
+    resetTracker();
+  }
+
+  initTokenClient();
+  renderConnections();
+  toast('Configurações salvas neste aparelho.');
+}
+$('#btnSaveConfig').addEventListener('click', saveConfig);
+
+$('#btnClearConfig').addEventListener('click', () => {
+  if (!confirm('Apagar as quatro configurações deste aparelho?')) return;
+  CFG_FIELDS.forEach(f => { cfg.set(f.key, ''); $('#' + f.id).value = ''; });
+  clearDriveToken();
+  drive.tokenClient = null;
+  resetTracker();
+  renderConnections();
+  toast('Configurações apagadas.');
+});
+
 function renderConnections() {
+
   const url = cfg.get('gas_url');
   let tail = '';
   try {
@@ -1473,7 +1539,7 @@ function connectDrive() {
     return;
   }
   if (!cfg.get('gcp_client_id')) {
-    if (confirm('Falta o Client ID do Google Cloud. Configurar agora?')) openSettings();
+    if (confirm('Falta o Client ID do Google Cloud. Configurar agora?')) openSettings('cfgClient');
     return;
   }
   if (!drive.gisReady) {
@@ -1580,7 +1646,7 @@ function driveErrorMessage(err) {
   const status = (err && err.status) || (apiErr && apiErr.code);
   if (status === 401) return 'A sessão do Drive expirou. Conecte de novo.';
   if (status === 403) return 'Sem permissão para ler este arquivo. Confira se ele está na conta conectada e se a Google Drive API está ativada no projeto do Google Cloud.';
-  if (status === 404) return 'Arquivo não encontrado. Confira o ID do Progress_Tracker nas configurações.';
+  if (status === 404) return 'Arquivo não encontrado. Confira o ID do Progress_Tracker na aba Config.';
   return apiErr && apiErr.message ? `O Drive respondeu: ${apiErr.message}` : 'Não foi possível ler o arquivo no Drive.';
 }
 
@@ -1588,7 +1654,7 @@ async function lerTrackerReal() {
   if (!drive.token) { toast('Conecte o Drive antes de sincronizar.'); renderTracker(); return; }
   const fileId = cfg.get('tracker_file_id');
   if (!fileId) {
-    if (confirm('Falta o ID do Progress_Tracker. Configurar agora?')) openSettings();
+    if (confirm('Falta o ID do Progress_Tracker. Configurar agora?')) openSettings('cfgTracker');
     return;
   }
   if (!drive.gapiReady || !gapi.client.drive) {
@@ -1656,9 +1722,9 @@ function renderTracker() {
     const synced = new Date(tracker.syncedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     meta.textContent = `${tracker.name || 'Arquivo'}${changed ? `, alterado no Drive em ${changed}` : ''}. Sincronizado às ${synced}.`;
   } else if (!drive.token) {
-    meta.textContent = 'Conecte o Drive para ler o arquivo real.';
+    meta.textContent = 'Conecte o Drive na aba Config para ler o arquivo real.';
   } else if (!hasId) {
-    meta.textContent = 'Falta o ID do arquivo. Use Configurações.';
+    meta.textContent = 'Falta o ID do arquivo. Preencha na aba Config.';
   } else {
     meta.textContent = 'Pronto para sincronizar.';
   }
@@ -1691,7 +1757,7 @@ renderSelChips();
 renderMeta();
 renderSaved();
 renderModels();
-renderConnections();
+loadConfigForm();
 bootGoogle();
 showView(location.hash.slice(1) || 'hoje');
 </script>
