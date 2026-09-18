@@ -1978,8 +1978,11 @@ const tracker = { busy: false, pending: false, text: '', name: '', modifiedTime:
 
 /* Aceita o ID puro ou o link inteiro do arquivo */
 function extractDriveId(v) {
-  const m = v.match(/\/d\/([\w-]{10,})/) || v.match(/[?&]id=([\w-]{10,})/);
-  return m ? m[1] : v;
+  const m = v.match(/\/folders\/([\w-]{10,})/)   // pasta: /drive/folders/ID
+         || v.match(/\/d\/([\w-]{10,})/)          // arquivo, doc ou planilha: /d/ID
+         || v.match(/[?&]id=([\w-]{10,})/)        // link antigo: ?id=ID
+         || v.match(/^([\w-]{10,})$/);            // ID puro
+  return m ? m[1] : v.trim();
 }
 
 function resetTracker() {
