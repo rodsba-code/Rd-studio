@@ -453,6 +453,13 @@
         <p class="help">Abra a pasta no Drive e cole o link: o app extrai o ID.</p>
       </div>
 
+      <div class="field">
+        <label class="field-label" for="cfgImages">ID da pasta das imagens geradas</label>
+        <input class="input mono-input" id="cfgImages" type="text" autocomplete="off" spellcheck="false"
+               placeholder="ID ou link da pasta">
+        <p class="help">Destino do botão "Salvar no Drive" do Estúdio. Quem grava é o Apps Script.</p>
+      </div>
+
       <button class="btn btn-primary btn-block" style="margin-top:22px" type="button" id="btnSaveConfig">Salvar configurações</button>
       <button class="btn btn-block" style="margin-top:10px" type="button" id="btnTestConn">Testar conexão com o proxy</button>
       <button class="btn btn-block" style="margin-top:10px" type="button" id="btnClearConfig">Apagar tudo deste aparelho</button>
@@ -1482,10 +1489,12 @@ function finishGeneration(data) {
           </div>`).join('')}
       </div>
       <figcaption class="out-caption">${many ? `${urls.length} imagens geradas` : 'Imagem gerada'} ${esc(gen.who)}, ${esc(gen.ratioKey)}.
-        <small id="genNote">Tarefa ${esc(gen.taskId)}. O PixAI apaga os arquivos, então baixe agora.</small>
+        <small id="genNote">Tarefa ${esc(gen.taskId)}. O PixAI apaga os arquivos, então salve agora.</small>
+        <small id="genSaved" hidden></small>
       </figcaption>
       <div class="btn-row" style="margin-top:14px">
-        ${many ? '' : '<a class="btn btn-primary" data-open="0" target="_blank" rel="noopener noreferrer">Abrir para baixar</a>'}
+        ${many ? '' : '<a class="btn" data-open="0" target="_blank" rel="noopener noreferrer">Abrir para baixar</a>'}
+        <button class="btn btn-primary" type="button" data-save-drive>${many ? 'Salvar todas no Drive' : 'Salvar no Drive'}</button>
         <button class="btn" type="button" data-copy-url>${many ? 'Copiar links' : 'Copiar link'}</button>
       </div>
     </figure>`;
@@ -1577,8 +1586,52 @@ async function startGeneration() {
 
 $('#btnGenerate').addEventListener('click', startGeneration);
 
+/* Nome pedido: generated_image_AAAA_MM_DD-HH_mm, com sufixo quando o lote tem mais de uma */
+function nomeDaImagem(i, total) {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const base = `generated_image_${d.getFullYear()}_${p(d.getMonth() + 1)}_${p(d.getDate())}-${p(d.getHours())}_${p(d.getMinutes())}`;
+  return (total > 1 ? `${base}_${i + 1}` : base) + '.png';
+}
+
+/* Quem grava é o Apps Script: ele já roda na sua conta e tem o token do PixAI.
+   Assim o login do app continua só de leitura e não esbarra em CORS ao baixar a mídia. */
+async function salvarNoDrive(btn) {
+  if (!gen.urls.length) return;
+  const folderId = pastaImagens();
+  btn.disabled = true;
+  const rotulo = btn.textContent;
+  btn.textContent = 'Salvando…';
+
+  const salvos = [], erros = [];
+  for (let i = 0; i < gen.urls.length; i++) {
+    const url = gen.urls[i];
+    const payload = { folderId, name: nomeDaImagem(i, gen.urls.length), taskId: gen.taskId };
+    if (url.startsWith('data:')) payload.dataUrl = url; else payload.url = url;
+    try {
+      const r = await gasCall({ action: 'save', payload });
+      salvos.push(pick(r, ['name', 'file.name', 'data.name']) || payload.name);
+    } catch (err) {
+      erros.push(err.message);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = rotulo;
+  const nota = $('#genSaved');
+  if (nota) {
+    nota.hidden = false;
+    nota.textContent = salvos.length
+      ? `Salvo no Drive: ${salvos.join(', ')}.${erros.length ? ` ${erros.length} falhou.` : ''}`
+      : `Não deu para salvar. ${erros[0] || ''}`;
+    nota.style.color = salvos.length ? 'var(--ok)' : 'var(--bad)';
+  }
+  toast(salvos.length ? (salvos.length > 1 ? `${salvos.length} imagens salvas no Drive.` : 'Imagem salva no Drive.') : 'Falhou ao salvar no Drive.');
+}
+
 $('#output').addEventListener('click', async e => {
   if (e.target.closest('[data-retry]')) { startGeneration(); return; }
+  const save = e.target.closest('[data-save-drive]');
+  if (save) { salvarNoDrive(save); return; }
   if (e.target.closest('[data-copy-url]')) {
     try { await navigator.clipboard.writeText(gen.urls.join('\n')); toast(gen.urls.length > 1 ? 'Links copiados.' : 'Link copiado.'); }
     catch (_) { toast('Não foi possível copiar.'); }
@@ -1662,8 +1715,13 @@ const CFG_FIELDS = [
   { id: 'cfgSecret',  key: 'gas_secret' },
   { id: 'cfgClient',  key: 'gcp_client_id' },
   { id: 'cfgTracker', key: 'tracker_file_id' },
-  { id: 'cfgChapters', key: 'chapters_folder_id' }
+  { id: 'cfgChapters', key: 'chapters_folder_id' },
+  { id: 'cfgImages', key: 'images_folder_id' }
 ];
+
+/* Pasta padrão das imagens, usada quando o campo está vazio */
+const PASTA_IMAGENS_PADRAO = '1y0Su0dRngEBVyY0XzJuqCwMaDgY1d3IW';
+const pastaImagens = () => cfg.get('images_folder_id') || PASTA_IMAGENS_PADRAO;
 
 function loadConfigForm() {
   CFG_FIELDS.forEach(f => { $('#' + f.id).value = cfg.get(f.key); });
@@ -1693,6 +1751,7 @@ function saveConfig() {
   const client = $('#cfgClient').value.trim();
   const tracker = extractDriveId($('#cfgTracker').value.trim());
   const pasta = extractDriveId($('#cfgChapters').value.trim());
+  const imagens = extractDriveId($('#cfgImages').value.trim());
 
   // Validação: nada é salvo se algum campo estiver claramente errado
   if (gas && !isHttps(gas)) { toast('A URL do proxy precisa começar com https://'); $('#cfgGas').focus(); return; }
@@ -1702,6 +1761,7 @@ function saveConfig() {
       !confirm('Esse Client ID não termina em .apps.googleusercontent.com. Salvar mesmo assim?')) return;
   if (tracker && !/^[\w-]{10,}$/.test(tracker)) { toast('Isso não parece um ID do Drive.'); $('#cfgTracker').focus(); return; }
   if (pasta && !/^[\w-]{10,}$/.test(pasta)) { toast('O ID da pasta de capítulos parece inválido.'); $('#cfgChapters').focus(); return; }
+  if (imagens && !/^[\w-]{10,}$/.test(imagens)) { toast('O ID da pasta de imagens parece inválido.'); $('#cfgImages').focus(); return; }
 
   const clientMudou = client !== cfg.get('gcp_client_id');
   const trackerMudou = tracker !== cfg.get('tracker_file_id');
@@ -1712,8 +1772,10 @@ function saveConfig() {
   cfg.set('gcp_client_id', client);
   cfg.set('tracker_file_id', tracker);
   cfg.set('chapters_folder_id', pasta);
+  cfg.set('images_folder_id', imagens);
   $('#cfgTracker').value = tracker;          // se colou o link, mostra só o ID
   $('#cfgChapters').value = pasta;
+  $('#cfgImages').value = imagens;
 
   if (clientMudou) {                          // token antigo pertence a outro Client ID
     clearDriveToken();

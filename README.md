@@ -41,6 +41,7 @@ deste aparelho (o ícone de engrenagem no topo leva para a mesma aba):
 | `gcp_client_id` | Client ID do Google Cloud |
 | `tracker_file_id` | ID do arquivo Progress_Tracker no Drive |
 | `chapters_folder_id` | ID da pasta de capítulos no Drive |
+| `images_folder_id` | ID da pasta onde o botão Salvar no Drive grava as imagens |
 
 Progress_Tracker_ver27.txt: `1t5JtcVdvu4L2Ye544H3JhuwN9aWUHyyg`
 (cada nova versão é um arquivo novo, com ID novo).
@@ -59,6 +60,16 @@ O app envia POST com o corpo em `text/plain` (evita o preflight de CORS):
 ```json
 { "secret": "...", "action": "check", "taskId": "..." }
 ```
+
+```json
+{ "secret": "...", "action": "save", "payload": {
+    "folderId": "...", "name": "generated_image_2026_09_18-00_50.png",
+    "url": "https://...", "taskId": "..." } }
+```
+
+O `save` grava a imagem no Drive pelo próprio Apps Script, que já roda na conta do
+dono. Assim o login do app continua apenas de leitura. Quando o proxy devolve a
+imagem em base64, o campo vem como `dataUrl` no lugar de `url`.
 
 O `doPost` deve ler `e.postData.contents`, conferir o `secret` e responder JSON
 via `ContentService`. Campos vazios (`negative_prompt`, `seed`) não são enviados.
