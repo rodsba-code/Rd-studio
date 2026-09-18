@@ -67,9 +67,8 @@
 
   /* ---------- estrutura ---------- */
   .topbar{position:sticky;top:0;z-index:30;background:rgba(12,11,10,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
-  .topbar-inner{max-width:600px;margin:0 auto;display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px}
+  .topbar-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;padding:14px 20px}
   .brand{flex:1 1 auto;min-width:0;text-align:left;display:flex;flex-direction:column;gap:2px}
-  .topbar-actions{flex:none}
   .brand-name{font-family:var(--serif);font-size:27px;line-height:1;letter-spacing:-.01em}
   .brand-sub{font-size:11.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
   .app{max-width:600px;margin:0 auto;padding:30px 20px calc(var(--nav-h) + env(safe-area-inset-bottom) + 36px)}
@@ -111,7 +110,6 @@
   .btn-block{width:100%}
   .btn:disabled{opacity:.55;cursor:progress}
   .btn-row{display:flex;flex-wrap:wrap;gap:10px}
-  #headerGenerate.is-active{background:var(--paper);border-color:var(--paper);color:var(--bg)}
 
   .chip-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:2px 20px}
   .chip-row::-webkit-scrollbar{display:none}
@@ -266,7 +264,6 @@
   .toast.is-on{opacity:1;transform:translate(-50%,0)}
 
   /* ---------- conexões e geração ---------- */
-  .topbar-actions{display:flex;align-items:center;gap:8px}
   .icon-btn.sm{width:42px;height:42px}
   .btn.btn-connected,.btn.btn-connected:hover{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
   .conn-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
@@ -295,12 +292,6 @@
       <span class="brand-name">RD Studio</span>
       <span class="brand-sub">Restored Desire</span>
     </button>
-    <div class="topbar-actions">
-      <button class="icon-btn sm" type="button" data-settings aria-label="Configurações">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-      <button class="btn btn-sm" id="headerGenerate" type="button" data-go="estudio">Gerar</button>
-    </div>
   </div>
 </header>
 
@@ -635,7 +626,6 @@ function showView(id) {
     if (on) { v.classList.remove('is-entering'); void v.offsetWidth; v.classList.add('is-entering'); }
   });
   $$('.tab').forEach(t => t.dataset.go === id ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'));
-  $('#headerGenerate').classList.toggle('is-active', id === 'estudio');
   document.title = `${TITLES[id]} | RD Studio`;
   try { history.replaceState(null, '', '#' + id); } catch (_) {}
   window.scrollTo({ top: 0 });
@@ -1214,15 +1204,33 @@ function renderMeta() {
   $('#promptMeta').innerHTML = `<span>${fmt(ta.value.length)} caracteres</span><span>${n} bloco${n === 1 ? '' : 's'} separados por BREAK</span>`;
 }
 
-function setSelection(keys) {
-  [...sel.options].forEach(o => { o.selected = keys.includes(o.value); });
-  studio.selected = [...sel.selectedOptions].map(o => o.value);
-  renderSelChips();
+/* Tira do textarea os blocos que pertencem a uma personagem.
+   Um bloco é dela quando começa com a base dela, com ou sem look no fim. */
+function removerBlocoDe(id) {
+  const base = promptBase(id).toLowerCase();
+  const blocos = ta.value.split(/\bBREAK\b/);
+  const ficam = blocos.filter(b => !b.trim().toLowerCase().startsWith(base));
+  if (ficam.length === blocos.length) return false;       // não havia bloco dela
+  ta.value = ficam.map(b => b.trim()).filter(Boolean).join(SEP);
+  renderMeta();
+  return true;
 }
 
-sel.addEventListener('change', () => {
+/* Fonte única da seleção: ao desmarcar alguém, o bloco dela sai do prompt */
+function aplicarSelecao(keys) {
+  const saíram = studio.selected.filter(k => !keys.includes(k));
+  [...sel.options].forEach(o => { o.selected = keys.includes(o.value); });
   studio.selected = [...sel.selectedOptions].map(o => o.value);
+
+  const removidos = saíram.filter(removerBlocoDe).map(k => charOf(k).name);
   renderSelChips();
+  if (removidos.length) toast(`${listPt(removidos)} ${removidos.length > 1 ? 'saíram' : 'saiu'} do prompt.`);
+}
+
+const setSelection = keys => aplicarSelecao(keys);
+
+sel.addEventListener('change', () => {
+  aplicarSelecao([...sel.selectedOptions].map(o => o.value));
 });
 
 /* Desktop: clique alterna a opção sem segurar Ctrl/Cmd */
